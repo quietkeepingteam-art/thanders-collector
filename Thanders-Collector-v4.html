@@ -1,0 +1,2377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thanders Collector – Front Porch DFW Listing Data Collector</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --honey:#E8A838;--honey-pale:#FEF9EE;
+    --sage:#7A9E7E;--sage-pale:#EAF4EB;
+    --bark:#5C3D2E;--cream:#FDF6EC;--warm-white:#FFFBF5;
+    --text:#3D2B1F;--text-light:#6B5044;--border:#E8D5C0;
+    --green:#2E7D32;--red:#C62828;--blue:#1565C0;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:#1A1A1A;color:#EEE;font-size:15px;line-height:1.6;}
+
+  /* HEADER */
+  header{background:linear-gradient(135deg,var(--bark),#1A0A00);padding:20px 28px;display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid var(--honey);}
+  .logo-row{display:flex;align-items:center;gap:12px;}
+  .logo-icon{width:40px;height:40px;background:var(--honey);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;}
+  .logo-text{font-size:1.1rem;font-weight:700;color:white;}
+  .logo-sub{font-size:0.7rem;color:var(--honey);letter-spacing:2px;text-transform:uppercase;}
+  .header-badge{background:rgba(232,168,56,0.15);border:1px solid var(--honey);color:var(--honey);font-size:0.75rem;padding:5px 12px;border-radius:20px;font-weight:700;}
+
+  /* LAYOUT */
+  .app{display:grid;grid-template-columns:280px 1fr;min-height:calc(100vh - 70px);}
+
+  /* SIDEBAR */
+  .sidebar{background:#111;border-right:1px solid #333;padding:20px;display:flex;flex-direction:column;gap:20px;}
+  .sb-section{background:#1E1E1E;border:1px solid #333;border-radius:12px;padding:16px;}
+  .sb-title{font-size:0.72rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--honey);margin-bottom:12px;}
+
+  label{font-size:0.82rem;color:#AAA;display:block;margin-bottom:5px;}
+  input,select,textarea{width:100%;padding:9px 12px;background:#2A2A2A;border:1px solid #444;border-radius:8px;color:#EEE;font-size:0.88rem;font-family:inherit;transition:border-color 0.2s;}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--honey);}
+  input.valid{border-color:var(--sage);}
+  input.invalid{border-color:#E57373;}
+
+  .field{margin-bottom:12px;}
+  .field-hint{font-size:0.75rem;color:#666;margin-top:4px;line-height:1.5;}
+
+  .btn{width:100%;padding:11px;border:none;border-radius:9px;font-size:0.9rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:8px;}
+  .btn-primary{background:var(--honey);color:white;}
+  .btn-primary:hover{background:#D4921E;}
+  .btn-primary:disabled{opacity:0.4;cursor:not-allowed;}
+  .btn-sage{background:var(--sage);color:white;}
+  .btn-sage:hover{background:#5A8060;}
+  .btn-dark{background:#2A2A2A;color:#AAA;border:1px solid #444;}
+  .btn-dark:hover{border-color:var(--honey);color:var(--honey);}
+  .btn-sm{padding:7px 14px;font-size:0.8rem;width:auto;}
+
+  .city-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  .city-cb{display:flex;align-items:center;gap:6px;padding:6px 8px;background:#2A2A2A;border:1px solid #444;border-radius:7px;cursor:pointer;font-size:0.8rem;color:#CCC;transition:all 0.15s;}
+  .city-cb:hover{border-color:var(--honey);}
+  .city-cb input[type=checkbox]{width:auto;accent-color:var(--honey);}
+  .city-cb.checked{border-color:var(--honey);background:#2E2518;color:var(--honey);}
+
+  .progress-wrap{display:none;}
+  .progress-wrap.show{display:block;}
+  .prog-bar{height:6px;background:#333;border-radius:3px;overflow:hidden;margin:8px 0;}
+  .prog-fill{height:100%;background:linear-gradient(90deg,var(--sage),var(--honey));width:0%;transition:width 0.4s;border-radius:3px;}
+  .prog-text{font-size:0.75rem;color:#888;}
+
+  .stats-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .stat-pill{background:#2A2A2A;border:1px solid #444;border-radius:20px;padding:5px 12px;font-size:0.78rem;color:#AAA;display:flex;align-items:center;gap:5px;}
+  .stat-pill .n{font-weight:700;color:var(--honey);}
+
+  /* MAIN */
+  .main{background:#141414;padding:20px;overflow:auto;}
+
+  /* TABS */
+  .tabs{display:flex;gap:0;border-bottom:2px solid #333;margin-bottom:20px;}
+  .tab{padding:10px 18px;font-size:0.85rem;font-weight:700;color:#666;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.2s;background:none;border-top:none;border-left:none;border-right:none;font-family:inherit;}
+  .tab:hover{color:#CCC;}
+  .tab.active{color:var(--honey);border-bottom-color:var(--honey);}
+
+  /* TABLE */
+  .table-wrap{overflow:auto;border:1px solid #333;border-radius:12px;}
+  .data-table{width:100%;border-collapse:collapse;font-size:0.82rem;}
+  .data-table th{background:#1E1E1E;color:#AAA;padding:10px 14px;text-align:left;font-size:0.72rem;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid #333;white-space:nowrap;position:sticky;top:0;}
+  .data-table td{padding:10px 14px;border-bottom:1px solid #222;color:#CCC;vertical-align:middle;}
+  .data-table tr:hover td{background:#1E1E1E;}
+  .data-table tr:last-child td{border-bottom:none;}
+
+  .badge{display:inline-block;font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap;}
+  .badge-google{background:#1565C020;color:#64B5F6;border:1px solid #1565C040;}
+  .badge-tulip{background:#2E7D3220;color:#81C784;border:1px solid #2E7D3240;}
+  .badge-dup{background:#F5720020;color:#FFB74D;border:1px solid #F5720040;}
+  .badge-al{background:#E8A83820;color:var(--honey);border:1px solid #E8A83840;}
+  .badge-mc{background:#1565C020;color:#90CAF9;border:1px solid #1565C040;}
+  .badge-il{background:#2E7D3220;color:#A5D6A7;border:1px solid #2E7D3240;}
+
+  .stars{color:var(--honey);letter-spacing:-2px;}
+  .rating-num{color:#AAA;font-size:0.75rem;margin-left:4px;}
+
+  .row-del{background:none;border:none;color:#555;cursor:pointer;font-size:1rem;padding:2px 6px;border-radius:4px;transition:color 0.2s;}
+  .row-del:hover{color:#E57373;}
+
+  .empty-state{padding:60px 20px;text-align:center;color:#555;}
+  .empty-state .es-icon{font-size:3rem;margin-bottom:12px;}
+  .empty-state p{font-size:0.9rem;line-height:1.7;}
+
+  /* LOG */
+  .log{background:#0D0D0D;border:1px solid #333;border-radius:10px;padding:14px;height:180px;overflow-y:auto;font-family:'Courier New',monospace;font-size:0.78rem;line-height:1.7;}
+  .log-line{padding:1px 0;}
+  .log-info{color:#64B5F6;}
+  .log-success{color:#81C784;}
+  .log-warn{color:#FFB74D;}
+  .log-error{color:#EF9A9A;}
+  .log-dim{color:#555;}
+  .ai-error-panel{display:none;background:#2A1111;border:1px solid #7F3030;border-radius:10px;padding:12px;margin-top:10px;}
+  .ai-error-panel.show{display:block;}
+  .ai-error-title{font-size:.78rem;font-weight:700;color:#FFB4B4;margin-bottom:6px;}
+  .ai-error-body{font-family:'Courier New',monospace;font-size:.72rem;color:#FFD9D9;white-space:pre-wrap;word-break:break-word;max-height:180px;overflow:auto;}
+  .ai-error-meta{font-size:.68rem;color:#B98A8A;margin-top:6px;}
+  .ai-failed-tag{display:inline-block;background:#7F303020;color:#FF9E9E;border:1px solid #7F303040;padding:1px 6px;border-radius:4px;font-size:.65rem;font-weight:700;margin-left:6px;}
+
+  /* EXPORT */
+  .export-row{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+  .export-row .btn{width:auto;}
+
+  /* TULIP INSTRUCTIONS */
+  .instructions{background:#1E1E1E;border:1px solid #333;border-radius:12px;padding:20px;margin-bottom:20px;}
+  .instructions h3{color:var(--honey);font-size:0.88rem;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+  .step-list{list-style:none;display:flex;flex-direction:column;gap:8px;}
+  .step-list li{display:flex;gap:12px;align-items:flex-start;font-size:0.85rem;color:#AAA;line-height:1.6;}
+  .step-num{width:22px;height:22px;border-radius:50%;background:var(--honey);color:white;font-size:0.72rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+  .step-list a{color:var(--honey);text-decoration:none;}
+  .step-list a:hover{text-decoration:underline;}
+  .step-list code{background:#2A2A2A;padding:1px 6px;border-radius:4px;font-size:0.8rem;color:#FFD54F;}
+
+  /* DROP ZONE */
+  .drop-zone{border:2px dashed #444;border-radius:12px;padding:40px;text-align:center;cursor:pointer;transition:all 0.2s;}
+  .drop-zone:hover,.drop-zone.drag-over{border-color:var(--honey);background:#2A2010;}
+  .drop-zone .dz-icon{font-size:2.5rem;margin-bottom:10px;}
+  .drop-zone p{color:#666;font-size:0.88rem;}
+  .drop-zone strong{color:#AAA;}
+
+  /* FILTER BAR */
+  .filter-bar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center;}
+  .filter-bar input{flex:1;min-width:200px;max-width:300px;}
+  .filter-select{padding:9px 12px;background:#2A2A2A;border:1px solid #444;border-radius:8px;color:#EEE;font-size:0.85rem;font-family:inherit;}
+
+  .count-badge{background:#2A2A2A;border:1px solid #444;border-radius:20px;padding:5px 12px;font-size:0.78rem;color:#888;}
+  .count-badge span{color:var(--honey);font-weight:700;}
+
+  @media(max-width:900px){.app{grid-template-columns:1fr;}.sidebar{border-right:none;border-bottom:1px solid #333;}.city-grid{grid-template-columns:repeat(3,1fr);}}
+
+  /* EDIT PANEL */
+  .edit-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);z-index:1000;display:none;align-items:center;justify-content:center;}
+  .edit-overlay.show{display:flex;}
+  .edit-panel{background:#1A1A1A;border:1px solid #444;border-radius:16px;width:680px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.5);}
+  .edit-hdr{display:flex;align-items:center;justify-content:space-between;padding:18px 24px;border-bottom:1px solid #333;position:sticky;top:0;background:#1A1A1A;z-index:1;border-radius:16px 16px 0 0;}
+  .edit-hdr h3{color:var(--honey);font-size:1rem;}
+  .edit-close{background:none;border:none;color:#666;font-size:1.3rem;cursor:pointer;padding:4px 8px;border-radius:6px;}
+  .edit-close:hover{color:#EEE;background:#333;}
+  .edit-body{padding:20px 24px;display:flex;flex-direction:column;gap:16px;}
+  .edit-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .edit-row.full{grid-template-columns:1fr;}
+  .edit-field label{font-size:.78rem;color:#888;display:block;margin-bottom:4px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;}
+  .edit-field input,.edit-field select,.edit-field textarea{width:100%;padding:9px 12px;background:#2A2A2A;border:1px solid #444;border-radius:8px;color:#EEE;font-size:.88rem;font-family:inherit;}
+  .edit-field textarea{min-height:70px;resize:vertical;line-height:1.5;}
+  .edit-field input:focus,.edit-field select:focus,.edit-field textarea:focus{outline:none;border-color:var(--honey);}
+  .edit-field .fhint{font-size:.7rem;color:#555;margin-top:3px;}
+  .edit-section{font-size:.72rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--sage);padding-top:8px;border-top:1px solid #2A2A2A;}
+  .edit-footer{display:flex;gap:10px;justify-content:flex-end;padding:16px 24px;border-top:1px solid #333;position:sticky;bottom:0;background:#1A1A1A;border-radius:0 0 16px 16px;}
+  .edit-footer .btn{width:auto;}
+  .amenity-grid{display:flex;flex-wrap:wrap;gap:6px;}
+  .amenity-tag{padding:6px 12px;background:#2A2A2A;border:1px solid #444;border-radius:20px;font-size:.8rem;color:#AAA;cursor:pointer;transition:all .15s;}
+  .amenity-tag:hover{border-color:var(--honey);}
+  .amenity-tag.on{background:#2E2518;border-color:var(--honey);color:var(--honey);}
+  .edit-readonlys{display:flex;flex-wrap:wrap;gap:8px;padding:8px 0;}
+  .ro-chip{background:#222;border:1px solid #333;border-radius:8px;padding:5px 10px;font-size:.78rem;color:#888;}
+  .ro-chip strong{color:#CCC;}
+  .completeness{display:flex;align-items:center;gap:10px;padding:10px 16px;background:#111;border-radius:10px;margin-bottom:4px;}
+  .completeness-bar{flex:1;height:6px;background:#333;border-radius:3px;overflow:hidden;}
+  .completeness-fill{height:100%;border-radius:3px;transition:width .3s;}
+  .completeness-text{font-size:.78rem;color:#888;white-space:nowrap;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-row">
+    <div class="logo-icon">🏡</div>
+    <div><div class="logo-text">Thanders Collector</div><div class="logo-sub">Listing Data Collector</div></div>
+  </div>
+  <div class="header-badge">Internal Tool — Not for Public Use</div>
+</header>
+
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+
+    <!-- SOURCE 1: Google Places -->
+    <div class="sb-section">
+      <div class="sb-title">① Google Places API</div>
+
+      <div class="field">
+        <label>API Key</label>
+        <input type="password" id="api-key" placeholder="AIza..." oninput="validateKey(this)">
+        <div class="field-hint">Get a free key at <a href="https://console.cloud.google.com" target="_blank" style="color:var(--honey);">console.cloud.google.com</a> → Enable Places API (New)</div>
+      </div>
+
+      <div class="field">
+        <label>Search Types</label>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          <label class="city-cb" id="cb-al"><input type="checkbox" id="type-al" checked onchange="updateCb(this,'cb-al')"> 🤝 Assisted Living</label>
+          <label class="city-cb" id="cb-mc"><input type="checkbox" id="type-mc" checked onchange="updateCb(this,'cb-mc')"> 🧠 Memory Care</label>
+          <label class="city-cb" id="cb-il"><input type="checkbox" id="type-il" onchange="updateCb(this,'cb-il')"> 🏡 Independent Living</label>
+          <label class="city-cb" id="cb-sn"><input type="checkbox" id="type-sn" onchange="updateCb(this,'cb-sn')"> 🏥 Skilled Nursing</label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>DFW Cities to Search</label>
+        <div class="city-grid">
+          <label class="city-cb checked" id="cbl-dallas"><input type="checkbox" class="city-check" value="Dallas TX" checked onchange="updateCb(this,'cbl-dallas')"> Dallas</label>
+          <label class="city-cb checked" id="cbl-ftworth"><input type="checkbox" class="city-check" value="Fort Worth TX" checked onchange="updateCb(this,'cbl-ftworth')"> Ft. Worth</label>
+          <label class="city-cb checked" id="cbl-plano"><input type="checkbox" class="city-check" value="Plano TX" checked onchange="updateCb(this,'cbl-plano')"> Plano</label>
+          <label class="city-cb checked" id="cbl-frisco"><input type="checkbox" class="city-check" value="Frisco TX" checked onchange="updateCb(this,'cbl-frisco')"> Frisco</label>
+          <label class="city-cb checked" id="cbl-mckinney"><input type="checkbox" class="city-check" value="McKinney TX" checked onchange="updateCb(this,'cbl-mckinney')"> McKinney</label>
+          <label class="city-cb checked" id="cbl-arlington"><input type="checkbox" class="city-check" value="Arlington TX" checked onchange="updateCb(this,'cbl-arlington')"> Arlington</label>
+          <label class="city-cb checked" id="cbl-irving"><input type="checkbox" class="city-check" value="Irving TX" checked onchange="updateCb(this,'cbl-irving')"> Irving</label>
+          <label class="city-cb checked" id="cbl-allen"><input type="checkbox" class="city-check" value="Allen TX" checked onchange="updateCb(this,'cbl-allen')"> Allen</label>
+          <label class="city-cb" id="cbl-richardson"><input type="checkbox" class="city-check" value="Richardson TX" onchange="updateCb(this,'cbl-richardson')"> Richardson</label>
+          <label class="city-cb" id="cbl-garland"><input type="checkbox" class="city-check" value="Garland TX" onchange="updateCb(this,'cbl-garland')"> Garland</label>
+          <label class="city-cb" id="cbl-grapevine"><input type="checkbox" class="city-check" value="Grapevine TX" onchange="updateCb(this,'cbl-grapevine')"> Grapevine</label>
+          <label class="city-cb" id="cbl-southlake"><input type="checkbox" class="city-check" value="Southlake TX" onchange="updateCb(this,'cbl-southlake')"> Southlake</label>
+          <label class="city-cb" id="cbl-denton"><input type="checkbox" class="city-check" value="Denton TX" onchange="updateCb(this,'cbl-denton')"> Denton</label>
+          <label class="city-cb" id="cbl-grandprairie"><input type="checkbox" class="city-check" value="Grand Prairie TX" onchange="updateCb(this,'cbl-grandprairie')"> Grand Prairie</label>
+          <label class="city-cb" id="cbl-mesquite"><input type="checkbox" class="city-check" value="Mesquite TX" onchange="updateCb(this,'cbl-mesquite')"> Mesquite</label>
+          <label class="city-cb" id="cbl-flowermound"><input type="checkbox" class="city-check" value="Flower Mound TX" onchange="updateCb(this,'cbl-flowermound')"> Flower Mound</label>
+          <label class="city-cb" id="cbl-mansfield"><input type="checkbox" class="city-check" value="Mansfield TX" onchange="updateCb(this,'cbl-mansfield')"> Mansfield</label>
+          <label class="city-cb" id="cbl-keller"><input type="checkbox" class="city-check" value="Keller TX" onchange="updateCb(this,'cbl-keller')"> Keller</label>
+        </div>
+      </div>
+
+      <div class="progress-wrap" id="goog-progress">
+        <div class="prog-text" id="goog-prog-text">Searching...</div>
+        <div class="prog-bar"><div class="prog-fill" id="goog-prog-fill"></div></div>
+      </div>
+
+      <button class="btn btn-primary" id="search-btn" onclick="runGoogleSearch()">🔍 Pull from Google Places</button>
+    </div>
+
+    <!-- SOURCE 2: TULIP -->
+    <div class="sb-section">
+      <div class="sb-title">② Texas HHS Official Directory</div>
+      <p style="font-size:0.8rem;color:#666;margin-bottom:12px;line-height:1.6;">Download the current Assisted Living directory from <a href="https://apps.hhs.texas.gov/providers/directories/al.xlsx" target="_blank" style="color:var(--honey);">apps.hhs.texas.gov</a> (no login needed), then drop the .xlsx here to merge with your Google data.</p>
+      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('tulip-file').click()" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFile(event)">
+        <div class="dz-icon">📂</div>
+        <strong>Drop al.xlsx here</strong>
+        <p>or click to browse (.xlsx or .csv)</p>
+      </div>
+      <input type="file" id="tulip-file" accept=".csv,.xlsx" style="display:none;" onchange="loadTulipFile(this)">
+    </div>
+
+    <!-- AI ENRICHMENT -->
+    <div class="sb-section">
+      <div class="sb-title">③ AI Auto-Fill (Groq) <span style="font-weight:400;color:#888;font-size:0.72em;">— optional</span></div>
+      <div class="field-hint" style="background:#2A2010;border:1px solid #4A3A1A;border-radius:8px;padding:8px 10px;margin-bottom:10px;line-height:1.6;">
+        ⚠️ This step is <strong>optional</strong> — you can skip it and fill fields manually. Groq's web-search model can be flaky (rate limits, "request too large" errors on some listings). If it's not working for you, export your listings and use <strong>Thanders Gemini Bridge</strong> instead — a companion tool that runs the same research through Gemini's free web UI with no API key, no rate limits, and no size errors.
+      </div>
+      <div class="field">
+        <label>Groq API Key</label>
+        <input type="password" id="groq-key" placeholder="gsk_...">
+        <div class="field-hint">Get an API key at <a href="https://console.groq.com/keys" target="_blank" style="color:var(--honey);">console.groq.com</a> — web research is billed by usage</div>
+      </div>
+      <div class="field" style="margin-top:12px;">
+        <label style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+          <span>AI Auto-Fill Batch Size</span>
+          <strong id="ai-batch-value" style="color:var(--sage);font-size:0.95rem;">10</strong>
+        </label>
+        <input type="range" id="ai-batch-size" min="1" max="10" value="10" step="1" oninput="updateAIBatchSize(this.value)" style="width:100%;accent-color:var(--sage);">
+        <div class="field-hint" id="ai-batch-hint">After Google Places results load, choose how many incomplete listings to research. This helps control Groq usage and cost.</div>
+      </div>
+      <button class="btn btn-sage" id="bulk-ai-btn" onclick="bulkAIFill()">🌐 AI Research + Fill 10</button>
+      <button class="btn btn-dark" id="retry-ai-btn" onclick="retryFailedAI()" style="margin-top:7px;">↻ Retry Failed AI</button>
+      <div class="progress-wrap" id="ai-progress">
+        <div class="prog-text" id="ai-prog-text">Processing...</div>
+        <div class="prog-bar"><div class="prog-fill" id="ai-prog-fill"></div></div>
+      </div>
+      <div class="ai-error-panel" id="ai-error-panel">
+        <div class="ai-error-title">⚠️ Last AI error — details for debugging</div>
+        <div class="ai-error-body" id="ai-error-body"></div>
+        <div class="ai-error-meta" id="ai-error-meta"></div>
+        <div style="margin-top:8px;font-size:0.78rem;color:#AAA;line-height:1.6;">Still stuck after retrying? Export your listings.json and finish AI research in <strong>Thanders Gemini Bridge</strong> instead — no API key required.</div>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="sb-section">
+      <div class="sb-title">Dataset Summary</div>
+      <div class="stats-row">
+        <div class="stat-pill">Total <span class="n" id="stat-total">0</span></div>
+        <div class="stat-pill">Google <span class="n" id="stat-google">0</span></div>
+        <div class="stat-pill">TULIP <span class="n" id="stat-tulip">0</span></div>
+        <div class="stat-pill">📷 Photos <span class="n" id="stat-photos">0</span></div>
+        <div class="stat-pill">Dupes removed <span class="n" id="stat-dupes">0</span></div>
+      </div>
+    </div>
+
+    <button class="btn btn-dark" onclick="clearAll()">🗑️ Clear All Data</button>
+
+  </div>
+
+  <!-- MAIN PANEL -->
+  <div class="main">
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab(this,'tab-results')">📋 Results</button>
+      <button class="tab" onclick="switchTab(this,'tab-tulip')">🏥 TULIP Setup</button>
+      <button class="tab" onclick="switchTab(this,'tab-log')">🖥️ Activity Log</button>
+    </div>
+
+    <!-- RESULTS TAB -->
+    <div id="tab-results">
+      <div class="filter-bar">
+        <input type="text" id="search-filter" placeholder="🔍 Filter by name, city, type..." oninput="onSearch()">
+        <select class="filter-select" id="type-filter" onchange="renderTable()">
+          <option value="">All Types</option>
+          <option value="Assisted Living">Assisted Living</option>
+          <option value="Memory Care">Memory Care</option>
+          <option value="Independent Living">Independent Living</option>
+          <option value="Skilled Nursing">Skilled Nursing</option>
+        </select>
+        <select class="filter-select" id="source-filter" onchange="renderTable()">
+          <option value="">All Sources</option>
+          <option value="Google">Google</option>
+          <option value="TULIP">TULIP</option>
+          <option value="Both">Both (merged)</option>
+        </select>
+        <div class="count-badge">Showing <span id="showing-count">0</span> of <span id="total-count">0</span></div>
+      </div>
+
+      <div class="export-row">
+        <button class="btn btn-primary btn-sm" onclick="startFilling()">✏️ Fill Missing Data</button>
+        <button class="btn btn-sage btn-sm" onclick="exportJSON()">⬇️ Export listings.json</button>
+        <button class="btn btn-sage btn-sm" id="export-photos-btn" onclick="exportPhotos()">📸 Export Photos to Folder</button>
+        <button class="btn btn-dark btn-sm" id="change-folder-btn" onclick="pickImagesFolder()" style="display:none;" title="Pick a different folder">📁 Change Folder</button>
+        <button class="btn btn-dark btn-sm" onclick="exportCSV()">⬇️ Export CSV</button>
+        <button class="btn btn-dark btn-sm" onclick="document.getElementById('import-json-file').click()">📥 Import JSON</button>
+        <input type="file" id="import-json-file" accept=".json,application/json" style="display:none;" onchange="importJSON(this)">
+        <button class="btn btn-dark btn-sm" onclick="copyClipboard(this)">📋 Copy for Spreadsheet</button>
+        <button class="btn btn-sm" style="background:#5C3D2E;color:white;" onclick="exportMergeInstructions()">📋 How to Merge →</button>
+        <span id="completeSummary" style="font-size:.78rem;color:#666;display:flex;align-items:center;gap:6px;margin-left:auto;"></span>
+      </div>
+
+      <div class="progress-wrap" id="photo-progress">
+        <div class="prog-text" id="photo-prog-text">Exporting photos...</div>
+        <div class="prog-bar"><div class="prog-fill" id="photo-prog-fill"></div></div>
+      </div>
+      <div id="folder-status" style="font-size:0.78rem;color:#666;margin:-8px 0 12px;"></div>
+
+      <div class="table-wrap">
+        <table class="data-table" id="data-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Type</th>
+              <th>City</th>
+              <th>Address</th>
+              <th>Phone</th>
+              <th>Rating</th>
+              <th>Website</th>
+              <th>Source</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="table-body">
+            <tr><td colspan="9">
+              <div class="empty-state">
+                <div class="es-icon">🏡</div>
+                <p>No listings yet.<br>Pull from Google Places or import a TULIP CSV to get started.</p>
+              </div>
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TULIP SETUP TAB -->
+    <div id="tab-tulip" style="display:none;">
+      <div class="instructions">
+        <h3>📋 How to Get the Official Texas HHS Directory</h3>
+        <ul class="step-list">
+          <li><div class="step-num">1</div>Go to <a href="https://apps.hhs.texas.gov/providers/directories/al.xlsx" target="_blank">apps.hhs.texas.gov/providers/directories/al.xlsx</a> — this downloads the current statewide Assisted Living provider directory directly, no login or manual search needed</li>
+          <li><div class="step-num">2</div>Drag and drop the downloaded <code>al.xlsx</code> file into the import area on the left sidebar — the tool reads it directly and merges/deduplicates against your Google data automatically</li>
+          <li><div class="step-num">3</div>The tool automatically filters to DFW-area cities as it imports, so it's fine that this file covers the whole state</li>
+        </ul>
+        <p style="font-size:0.8rem;color:#888;margin-top:10px;line-height:1.6;">Note: this directory covers <strong>Assisted Living</strong> facilities specifically. If HHS publishes a separate file for another care type (e.g. memory care) at a similar path under <code>apps.hhs.texas.gov/providers/directories/</code>, you can import that the same way — just drop it in and it merges in alongside the rest.</p>
+      </div>
+
+      <div class="instructions">
+        <h3>🔑 How to Get a Free Google Places API Key</h3>
+        <ul class="step-list">
+          <li><div class="step-num">1</div>Go to <a href="https://console.cloud.google.com" target="_blank">console.cloud.google.com</a> and sign in with your Google account</li>
+          <li><div class="step-num">2</div>Create a new project (e.g. "FrontPorchDFW")</li>
+          <li><div class="step-num">3</div>Go to <strong>APIs & Services → Library</strong> and enable <code>Places API (New)</code></li>
+          <li><div class="step-num">4</div>Go to <strong>APIs & Services → Credentials → Create Credentials → API Key</strong></li>
+          <li><div class="step-num">5</div>Copy the key and paste it into the API Key field on the left</li>
+          <li><div class="step-num">6</div><strong>Free tier:</strong> Google gives you $200/month in free API credits. Each text search costs ~$0.017. Searching all 12 DFW cities × 4 care types = 48 searches ≈ $0.82 total. Well within the free tier.</li>
+        </ul>
+      </div>
+
+      <div class="instructions">
+        <h3>📊 What Data You Get from Each Source</h3>
+        <table class="data-table" style="border:none;">
+          <thead><tr><th>Field</th><th>Google Places</th><th>Texas HHS Directory</th></tr></thead>
+          <tbody>
+            <tr><td>Facility Name</td><td style="color:#81C784;">✓</td><td style="color:#81C784;">✓</td></tr>
+            <tr><td>Address</td><td style="color:#81C784;">✓</td><td style="color:#81C784;">✓</td></tr>
+            <tr><td>Phone Number</td><td style="color:#81C784;">✓</td><td style="color:#81C784;">✓</td></tr>
+            <tr><td>Website URL</td><td style="color:#81C784;">✓</td><td style="color:#EF9A9A;">—</td></tr>
+            <tr><td>Google Rating + Reviews</td><td style="color:#81C784;">✓</td><td style="color:#EF9A9A;">—</td></tr>
+            <tr><td>Care Type / License Type</td><td style="color:#FFB74D;">Inferred</td><td style="color:#81C784;">✓ Official</td></tr>
+            <tr><td>License Number</td><td style="color:#EF9A9A;">—</td><td style="color:#81C784;">✓</td></tr>
+            <tr><td>Licensed Capacity</td><td style="color:#EF9A9A;">—</td><td style="color:#81C784;">✓</td></tr>
+            <tr><td>License Status</td><td style="color:#EF9A9A;">—</td><td style="color:#81C784;">✓ Active/Expired</td></tr>
+            <tr><td>Legal Entity Name</td><td style="color:#EF9A9A;">—</td><td style="color:#81C784;">✓</td></tr>
+          </tbody>
+        </table>
+        <p style="font-size:0.8rem;color:#666;margin-top:12px;">💡 Best results come from running both sources and merging — Google gives you ratings and websites, the Texas HHS directory gives you official license data and capacity.</p>
+      </div>
+    </div>
+
+    <!-- LOG TAB -->
+    <div id="tab-log" style="display:none;">
+      <div class="log" id="log">
+        <div class="log-line log-dim">— Front Porch DFW Data Collector ready —</div>
+        <div class="log-line log-dim">— Add your Google Places API key and select cities to begin —</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- EDIT PANEL OVERLAY -->
+<div class="edit-overlay" id="editOverlay" onclick="if(event.target===this)closeEdit()">
+  <div class="edit-panel">
+    <div class="edit-hdr">
+      <h3 id="editTitle">Edit Listing</h3>
+      <button class="edit-close" onclick="closeEdit()">✕</button>
+    </div>
+    <div class="edit-body">
+      <div class="completeness" id="editCompleteness">
+        <span style="font-size:.82rem;">📊</span>
+        <div class="completeness-bar"><div class="completeness-fill" id="editCompFill" style="width:0%;background:var(--honey);"></div></div>
+        <span class="completeness-text" id="editCompText">0% complete</span>
+      </div>
+
+      <div class="edit-section">Auto-populated (from scraping)</div>
+      <div class="edit-readonlys" id="editReadonlys"></div>
+      <div id="editPhotoPreview" style="display:none;padding:6px 0;"></div>
+      <div id="editReviewPreview" style="display:none;padding:6px 0;"></div>
+
+      <div class="edit-section">Required — Fill these in</div>
+
+      <div class="edit-row">
+        <div class="edit-field">
+          <label>Price Range</label>
+          <input type="text" id="ed-priceRange" placeholder="Leave blank to estimate">
+          <div class="fhint">Use verified pricing when available. Blank prices are automatically estimated and clearly labeled as estimates.</div>
+        </div>
+        <div class="edit-field">
+          <label>Budget Categories</label>
+          <div class="amenity-grid" id="ed-budget">
+            <span class="amenity-tag" data-val="under3k" onclick="toggleTag(this)">Under $3k</span>
+            <span class="amenity-tag" data-val="3k-5k" onclick="toggleTag(this)">$3k–$5k</span>
+            <span class="amenity-tag" data-val="5k-8k" onclick="toggleTag(this)">$5k–$8k</span>
+            <span class="amenity-tag" data-val="8kplus" onclick="toggleTag(this)">$8k+</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="edit-row">
+        <div class="edit-field">
+          <label>Email</label>
+          <input type="email" id="ed-email" placeholder="info@facilityname.com">
+        </div>
+        <div class="edit-field">
+          <label>Image URL</label>
+          <input type="url" id="ed-image" placeholder="https://images.unsplash.com/... or /images/photo.jpg">
+          <div class="fhint">Unsplash, Cloudinary, or local /images/ path</div>
+        </div>
+      </div>
+
+      <div class="edit-row full">
+        <div class="edit-field">
+          <label>Description</label>
+          <textarea id="ed-description" placeholder="Write 2-3 sentences about the community — what makes it special, what care they provide, etc."></textarea>
+        </div>
+      </div>
+
+      <div class="edit-row">
+        <div class="edit-field">
+          <label>Amenities</label>
+          <div class="amenity-grid" id="ed-amenities">
+            <span class="amenity-tag" data-val="social" onclick="toggleTag(this)">🎉 Social Activities</span>
+            <span class="amenity-tag" data-val="dining" onclick="toggleTag(this)">🍽️ Quality Dining</span>
+            <span class="amenity-tag" data-val="outdoor" onclick="toggleTag(this)">🌳 Outdoor Spaces</span>
+            <span class="amenity-tag" data-val="medical" onclick="toggleTag(this)">🏥 On-site Medical</span>
+          </div>
+        </div>
+        <div class="edit-field">
+          <label>Premium Listing?</label>
+          <select id="ed-premium">
+            <option value="false">No — Free listing</option>
+            <option value="true">Yes — Paying client ($29/mo)</option>
+          </select>
+          <div class="fhint">Premium listings get featured placement + star badge</div>
+        </div>
+      </div>
+
+      <div class="edit-section">Optional overrides</div>
+      <div class="edit-row">
+        <div class="edit-field">
+          <label>Phone (override)</label>
+          <input type="tel" id="ed-phone" placeholder="(972) 555-0142">
+        </div>
+        <div class="edit-field">
+          <label>Name (override)</label>
+          <input type="text" id="ed-name" placeholder="">
+        </div>
+      </div>
+    </div>
+    <div class="edit-footer">
+      <button class="btn btn-dark btn-sm" onclick="closeEdit()">Cancel</button>
+      <button class="btn btn-sm" style="background:#7B68EE;color:white;" id="aiFillBtn" onclick="aiFillSingle()">🌐 AI Research + Fill This Listing</button>
+      <button class="btn btn-primary btn-sm" onclick="saveEdit()">💾 Save Changes</button>
+      <button class="btn btn-sage btn-sm" onclick="saveAndNext()">💾 Save & Next →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ─── STATE ───────────────────────────────────────────
+  let dataset = []; // Full listings.json schema
+  let dupeCount = 0;
+  let editingId = null; // currently editing listing ID
+  let editingIndex = -1; // index in filtered list for next/prev
+
+  // ─── LOGGING ────────────────────────────────────────
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && editingId) closeEdit();
+  });
+  function log(msg, type='info') {
+    const el = document.getElementById('log');
+    const line = document.createElement('div');
+    line.className = `log-line log-${type}`;
+    const time = new Date().toLocaleTimeString();
+    line.textContent = `[${time}] ${msg}`;
+    el.appendChild(line);
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function showAIError(details, meta='') {
+    const panel = document.getElementById('ai-error-panel');
+    const body = document.getElementById('ai-error-body');
+    const metaEl = document.getElementById('ai-error-meta');
+    if (!panel || !body) return;
+    body.textContent = String(details || 'Unknown AI error');
+    if (metaEl) metaEl.textContent = meta || '';
+    panel.classList.add('show');
+  }
+
+  function clearAIError() {
+    const panel = document.getElementById('ai-error-panel');
+    if (panel) panel.classList.remove('show');
+  }
+
+  // ─── UI HELPERS ──────────────────────────────────────
+  function updateCb(checkbox, parentId) {
+    document.getElementById(parentId).classList.toggle('checked', checkbox.checked);
+  }
+
+  function switchTab(btn, tabId) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    ['tab-results','tab-tulip','tab-log'].forEach(id => {
+      document.getElementById(id).style.display = id === tabId ? 'block' : 'none';
+    });
+  }
+
+  function validateKey(input) {
+    const v = input.value.trim();
+    input.className = v.startsWith('AIza') && v.length > 30 ? 'valid' : v.length > 5 ? 'invalid' : '';
+  }
+
+  function dragOver(e) { e.preventDefault(); document.getElementById('drop-zone').classList.add('drag-over'); }
+  function dragLeave(e) { document.getElementById('drop-zone').classList.remove('drag-over'); }
+  function dropFile(e) {
+    e.preventDefault();
+    document.getElementById('drop-zone').classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) parseTulipFile(file);
+  }
+
+  function loadTulipFile(input) {
+    if (input.files[0]) parseTulipFile(input.files[0]);
+  }
+
+  // ─── STATS ───────────────────────────────────────────
+  function updateStats() {
+    const googleCount = dataset.filter(r => r.source === 'Google' || r.source === 'Both').length;
+    const tulipCount = dataset.filter(r => r.source === 'TULIP' || r.source === 'Both').length;
+    document.getElementById('stat-total').textContent = dataset.length;
+    document.getElementById('stat-google').textContent = googleCount;
+    document.getElementById('stat-tulip').textContent = tulipCount;
+    document.getElementById('stat-dupes').textContent = dupeCount;
+    const photoCount = dataset.filter(r => r.images && r.images.length > 0).length;
+    document.getElementById('stat-photos').textContent = photoCount;
+    // Update completeness summary
+    const el = document.getElementById('completeSummary');
+    if (el && dataset.length) {
+      const complete = dataset.filter(isComplete).length;
+      const pct = Math.round((complete / dataset.length) * 100);
+      const color = pct === 100 ? '#81C784' : pct >= 50 ? '#FFB74D' : '#EF9A9A';
+      el.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:${color};"></span> ${complete}/${dataset.length} ready to export (${pct}%)`;
+    } else if (el) {
+      el.innerHTML = '';
+    }
+    syncAIBatchSlider();
+  }
+
+  function updateAIBatchSize(value) {
+    const n = Math.max(1, parseInt(value, 10) || 1);
+    const valueEl = document.getElementById('ai-batch-value');
+    const btn = document.getElementById('bulk-ai-btn');
+    if (valueEl) valueEl.textContent = n;
+    if (btn && !btn.disabled) btn.textContent = `🌐 AI Research + Fill ${n}`;
+  }
+
+  function syncAIBatchSlider() {
+    const slider = document.getElementById('ai-batch-size');
+    const hint = document.getElementById('ai-batch-hint');
+    if (!slider) return;
+    const available = getFilteredList().filter(x => !isComplete(x) && !x._aiFilled).length;
+    const max = Math.max(1, available);
+    slider.max = max;
+    if (parseInt(slider.value, 10) > max) slider.value = max;
+    updateAIBatchSize(slider.value);
+    if (hint) hint.textContent = available
+      ? `Current filtered view has ${available} incomplete listing${available === 1 ? '' : 's'} available. Choose how many to research now to control Groq usage and cost.`
+      : 'No incomplete listings are currently available in the filtered view.';
+  }
+
+  function startFilling() {
+    if (!dataset.length) { alert('No listings to fill. Pull from Google Places first.'); return; }
+    const visible = getFilteredList();
+    const first = visible.find(x => !isComplete(x));
+    if (first) {
+      openEdit(first.id);
+    } else {
+      log('All filtered listings are complete! Ready to export.', 'success');
+      alert(`All ${visible.length} listings in your current view are complete!\n\nClick "Export listings.json" to download.`);
+    }
+  }
+
+  // ─── GOOGLE PLACES PHOTOS ──────────────────────────
+  function extractPhotos(place, apiKey) {
+    const photos = place.photos || [];
+    if (!photos.length) return { image: '', images: [] };
+    
+    // Google Places API (New) returns photo resources like:
+    // places/PLACE_ID/photos/PHOTO_REF
+    // We use the Photo Media endpoint to get actual image URLs
+    const photoUrls = photos.slice(0, 5).map(p => {
+      const photoName = p.name; // e.g., "places/ChIJ.../photos/AelY..."
+      if (!photoName) return null;
+      return `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=800&maxHeightPx=500&key=${apiKey}`;
+    }).filter(Boolean);
+
+    return {
+      image: photoUrls[0] || '',
+      images: photoUrls
+    };
+  }
+
+  // ─── GOOGLE PLACES REVIEWS (TESTIMONIALS) ───────────
+  function extractReviews(place) {
+    const reviews = place.reviews || [];
+    return reviews
+      .map(rv => ({
+        author: rv.authorAttribution?.displayName || 'Google user',
+        rating: rv.rating || null,
+        text: (rv.text?.text || rv.originalText?.text || '').trim(),
+        time: rv.relativePublishTimeDescription || ''
+      }))
+      .filter(rv => rv.text) // skip star-only reviews with no written text
+      .slice(0, 2); // keep the top 2 as testimonials
+  }
+
+
+  // ─── GOOGLE PLACES SEARCH ────────────────────────────
+  async function runGoogleSearch() {
+    const apiKey = document.getElementById('api-key').value.trim();
+    if (!apiKey || !apiKey.startsWith('AIza')) {
+      alert('Please enter a valid Google Places API key first.\n\nSee the TULIP Setup tab for instructions on getting one.');
+      return;
+    }
+
+    const cities = Array.from(document.querySelectorAll('.city-check:checked')).map(c => c.value);
+    if (!cities.length) { alert('Select at least one DFW city.'); return; }
+
+    const types = [];
+    if (document.getElementById('type-al').checked) types.push({ query: 'assisted living', label: 'Assisted Living' });
+    if (document.getElementById('type-mc').checked) types.push({ query: 'memory care dementia', label: 'Memory Care' });
+    if (document.getElementById('type-il').checked) types.push({ query: 'independent living senior', label: 'Independent Living' });
+    if (document.getElementById('type-sn').checked) types.push({ query: 'skilled nursing facility', label: 'Skilled Nursing' });
+    if (!types.length) { alert('Select at least one care type.'); return; }
+
+    const btn = document.getElementById('search-btn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Searching...';
+    document.getElementById('goog-progress').classList.add('show');
+
+    const total = cities.length * types.length;
+    let done = 0;
+    let newCount = 0;
+
+    log(`Starting Google Places search: ${cities.length} cities × ${types.length} types = ${total} queries`, 'info');
+
+    for (const city of cities) {
+      for (const type of types) {
+        const query = `${type.query} ${city}`;
+        log(`Searching: "${query}"`, 'dim');
+
+        try {
+          const resp = await fetch('https://places.googleapis.com/v1/places:searchText', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Goog-Api-Key': apiKey,
+              'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.rating,places.userRatingCount,places.websiteUri,places.id,places.shortFormattedAddress,places.location,places.photos,places.reviews,places.googleMapsUri,nextPageToken'
+            },
+            body: JSON.stringify({ textQuery: query, pageSize: 20 })
+          });
+
+          if (!resp.ok) {
+            const err = await resp.json();
+            log(`API error: ${err.error?.message || resp.statusText}`, 'error');
+            continue;
+          }
+
+          const firstPage = await resp.json();
+          if (firstPage.error) {
+            log(`API error: ${firstPage.error.message || 'Unknown API error'}`, 'error');
+            continue;
+          }
+
+          let places = [...(firstPage.places || [])];
+          let nextPageToken = firstPage.nextPageToken;
+
+          while (nextPageToken) {
+            await sleep(2000);
+            const pageResp = await fetch('https://places.googleapis.com/v1/places:searchText', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Goog-Api-Key': apiKey,
+                'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.rating,places.userRatingCount,places.websiteUri,places.id,places.shortFormattedAddress,places.location,places.photos,places.reviews,places.googleMapsUri,nextPageToken'
+              },
+              body: JSON.stringify({ textQuery: query, pageSize: 20, pageToken: nextPageToken })
+            });
+
+            if (!pageResp.ok) {
+              const err = await pageResp.json().catch(() => ({}));
+              log(`Pagination error: ${err.error?.message || pageResp.statusText}`, 'warn');
+              break;
+            }
+
+            const pageData = await pageResp.json();
+            if (pageData.error) {
+              log(`Pagination error: ${pageData.error.message || 'Unknown API error'}`, 'warn');
+              break;
+            }
+
+            places.push(...(pageData.places || []));
+            nextPageToken = pageData.nextPageToken;
+          }
+
+          log(`  → ${places.length} results for "${query}" (${places.filter(p => p.photos?.length).length} with photos, ${places.filter(p => p.reviews?.length).length} with reviews)`, 'success');
+
+          for (const place of places) {
+            const name = place.displayName?.text || '';
+            const address = place.formattedAddress || '';
+
+            // Extract city from address
+            const cityMatch = address.match(/,\s*([^,]+),\s*TX/);
+            const placeCity = cityMatch ? cityMatch[1].trim() : city.replace(' TX','');
+
+            const photos = extractPhotos(place, apiKey);
+            const reviews = extractReviews(place);
+
+            const record = {
+              id: name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,''),
+              name,
+              type: type.label,
+              city: placeCity,
+              address,
+              phone: place.nationalPhoneNumber || '',
+              rating: place.rating || '',
+              reviewCount: place.userRatingCount || 0,
+              website: place.websiteUri || '',
+              mapsUrl: place.googleMapsUri || '',
+              lat: place.location?.latitude || '',
+              lng: place.location?.longitude || '',
+              source: 'Google',
+              licenseNumber: '',
+              licenseType: '',
+              capacity: '',
+              photo: '',
+              lastVerified: '',
+              priceRange: '',
+              email: '',
+              image: photos.image,
+              images: photos.images,
+              reviews,
+              description: '',
+              amenities: [],
+              budget: [],
+              premium: false
+            };
+
+            if (!isDuplicate(record)) {
+              dataset.push(record);
+              newCount++;
+            } else {
+              // Merge Google data into existing TULIP record
+              const existing = findMatch(record);
+              if (existing) {
+                existing.source = 'Both';
+                existing.rating = record.rating;
+                existing.reviewCount = record.reviewCount;
+                existing.website = existing.website || record.website;
+                existing.phone = existing.phone || record.phone;
+                existing.lat = existing.lat || record.lat;
+                existing.lng = existing.lng || record.lng;
+                existing.mapsUrl = existing.mapsUrl || record.mapsUrl;
+                // Merge photos from Google
+                if (!existing.image && record.image) existing.image = record.image;
+                if ((!existing.images || !existing.images.length) && record.images && record.images.length) existing.images = record.images;
+                // Merge testimonials from Google
+                if ((!existing.reviews || !existing.reviews.length) && record.reviews && record.reviews.length) existing.reviews = record.reviews;
+                dupeCount++;
+              }
+            }
+          }
+        } catch (err) {
+          log(`Network error for "${query}": ${err.message}`, 'error');
+        }
+
+        done++;
+        const pct = Math.round((done / total) * 100);
+        document.getElementById('goog-prog-fill').style.width = pct + '%';
+        document.getElementById('goog-prog-text').textContent = `${done} of ${total} searches complete...`;
+
+        // Small delay to be polite to the API
+        await sleep(300);
+      }
+    }
+
+    log(`Google search complete. Added ${newCount} new listings. Total: ${dataset.length}`, 'success');
+    btn.disabled = false;
+    btn.textContent = '🔍 Pull from Google Places';
+    document.getElementById('goog-progress').classList.remove('show');
+    updateStats();
+    saveLocal();
+    renderTable();
+    switchTab(document.querySelector('.tab'), 'tab-results');
+    document.querySelector('.tab').classList.add('active');
+  }
+
+  // ─── TEXAS HHS DIRECTORY PARSER (xlsx or csv) ────────────────────────
+  function parseTulipFile(file) {
+    const isExcel = /\.xlsx?$/i.test(file.name);
+    log(`Loading Texas HHS directory file: ${file.name} (${isExcel ? 'Excel' : 'CSV'})`, 'info');
+    const reader = new FileReader();
+
+    reader.onload = e => {
+      let rows;
+      if (isExcel) {
+        if (typeof XLSX === 'undefined') {
+          log('XLSX library did not load (check your internet connection) — cannot read .xlsx files. Try again, or export the sheet as CSV instead.', 'error');
+          alert('The Excel-reading library did not load — check your internet connection, or export the file as CSV instead.');
+          return;
+        }
+        try {
+          const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const sheet = workbook.Sheets[firstSheetName];
+          // header:1 -> array-of-arrays, same shape parseCSV() already produces
+          rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false });
+          log(`Read sheet "${firstSheetName}" (${rows.length - 1} data rows) from ${file.name}`, 'info');
+        } catch (err) {
+          log(`Could not read this .xlsx file: ${err.message}`, 'error');
+          alert(`Could not read this Excel file: ${err.message}`);
+          return;
+        }
+      } else {
+        rows = parseCSV(e.target.result);
+      }
+      processTulipRows(rows, file.name);
+    };
+
+    if (isExcel) reader.readAsArrayBuffer(file);
+    else reader.readAsText(file);
+  }
+
+  function processTulipRows(rows, filename) {
+    if (!rows.length) { log('No rows found in file', 'error'); return; }
+
+    // Normalize every cell to a trimmed string, whatever type SheetJS/parseCSV gave us
+    rows = rows.map(row => (row || []).map(cell => (cell === null || cell === undefined) ? '' : String(cell).trim()));
+
+    log(`Parsing ${rows.length - 1} rows from ${filename}...`, 'info');
+    const headers = rows[0].map(h => h.toLowerCase().trim());
+    let added = 0;
+
+    // Log detected headers for debugging
+    log(`Headers found: ${headers.join(' | ')}`, 'info');
+
+    // Map common column names (they vary by export/format version)
+    const col = (names) => {
+      for (const n of names) {
+        const i = headers.findIndex(h => h.includes(n));
+        if (i !== -1) return i;
+      }
+      return -1;
+    };
+
+    const nameCol = col(['provider name','facility name','doing business','dba','name','provider']);
+    const addrCol = col(['address','street','physical address','location']);
+    const cityCol = col(['city','municipality']);
+    const phoneCol = col(['phone','telephone','tel']);
+    const typeCol = col(['provider type','type','license type','program type','category']);
+    const licCol = col(['license number','license #','lic no','license no','license']);
+    const capCol = col(['capacity','licensed capacity','beds','bed']);
+    const statusCol = col(['license status','status']);
+
+    // Log column mapping for debugging
+    log(`Column mapping → name:${nameCol} addr:${addrCol} city:${cityCol} phone:${phoneCol} type:${typeCol} lic:${licCol} cap:${capCol} status:${statusCol}`, 'info');
+
+    // If no name column found, try first column as fallback
+    const effectiveNameCol = nameCol !== -1 ? nameCol : 0;
+    if (nameCol === -1) {
+      log(`⚠️ Could not find a "name" column — using first column "${headers[0]}" as facility name`, 'warn');
+    }
+
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      const name = (row[effectiveNameCol] || '').trim();
+      if (!name) continue;
+
+      const city = cityCol !== -1 ? (row[cityCol] || '').trim() : '';
+      const dfw = isDFWCity(city);
+      if (!dfw && city) { continue; } // skip non-DFW if city is known
+
+      const safeCol = (idx) => idx !== -1 && idx < row.length ? (row[idx] || '').trim() : '';
+
+      const record = {
+        id: `t-${Date.now()}-${i}`,
+        name: name,
+        type: inferType(safeCol(typeCol)),
+        city: city || 'DFW',
+        address: safeCol(addrCol) + (city ? ', ' + city + ', TX' : ''),
+        phone: formatPhone(safeCol(phoneCol)),
+        rating: '',
+        reviewCount: 0,
+        website: '',
+        mapsUrl: '',
+        lat: '',
+        lng: '',
+        source: 'TULIP',
+        licenseNumber: safeCol(licCol),
+        capacity: safeCol(capCol),
+        licenseStatus: safeCol(statusCol) || 'Active',
+        priceRange: '',
+        email: '',
+        image: '',
+        reviews: [],
+        description: '',
+        amenities: [],
+        budget: [],
+        premium: false
+      };
+
+      if (!record.name) continue;
+
+      if (!isDuplicate(record)) {
+        dataset.push(record);
+        added++;
+      } else {
+        const existing = findMatch(record);
+        if (existing) {
+          existing.source = 'Both';
+          existing.licenseNumber = existing.licenseNumber || record.licenseNumber;
+          existing.licenseType = existing.licenseType || record.licenseType;
+          existing.capacity = existing.capacity || record.capacity;
+          existing.capacity = existing.capacity || record.capacity;
+          existing.licenseStatus = record.licenseStatus;
+          dupeCount++;
+        }
+      }
+    }
+
+    log(`Import complete. Added ${added} new listings. Total: ${dataset.length}`, 'success');
+    updateStats();
+    saveLocal();
+    renderTable();
+  }
+
+  // ─── HELPERS ─────────────────────────────────────────
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  function isDuplicate(record) {
+    return !!findMatch(record);
+  }
+
+  function findMatch(record) {
+    const normalize = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const n = normalize(record.name);
+    return dataset.find(r => {
+      const rn = normalize(r.name);
+      return rn === n || (n.length > 6 && (rn.includes(n) || n.includes(rn)));
+    });
+  }
+
+  function isDFWCity(city) {
+    const dfw = ['frisco','mckinney','plano','allen','southlake','grapevine','arlington','fort worth','irving','dallas','richardson','garland','denton','carrollton','lewisville','mesquite','rowlett','rockwall','wylie','murphy','prosper','celina','little elm','flower mound','highland village','coppell','euless','bedford','hurst','colleyville','keller','mansfield','grand prairie','duncanville'];
+    return dfw.some(c => city.toLowerCase().includes(c));
+  }
+
+  function inferType(typeStr) {
+    const t = typeStr.toLowerCase();
+    if (t.includes('memory') || t.includes('dementia') || t.includes('alzheimer')) return 'Memory Care';
+    if (t.includes('independent')) return 'Independent Living';
+    if (t.includes('skilled') || t.includes('nursing')) return 'Skilled Nursing';
+    if (t.includes('assisted') || t.includes('alf')) return 'Assisted Living';
+    return typeStr || 'Assisted Living';
+  }
+
+  function formatPhone(p) {
+    if (!p) return '';
+    const d = p.replace(/\D/g,'');
+    if (d.length === 10) return `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`;
+    if (d.length === 11 && d[0] === '1') return `(${d.slice(1,4)}) ${d.slice(4,7)}-${d.slice(7)}`;
+    return p;
+  }
+
+  function parseCSV(text) {
+    const rows = [];
+    let row = [];
+    let cell = '';
+    let inQuote = false;
+
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      const next = text[i + 1];
+
+      if (c === '"') {
+        if (inQuote && next === '"') {
+          cell += '"';
+          i++;
+        } else {
+          inQuote = !inQuote;
+        }
+      } else if (c === ',' && !inQuote) {
+        row.push(cell.trim());
+        cell = '';
+      } else if ((c === '\n' || c === '\r') && !inQuote) {
+        if (c === '\r' && next === '\n') i++;
+        row.push(cell.trim());
+        if (row.some(v => v !== '')) rows.push(row);
+        row = [];
+        cell = '';
+      } else {
+        cell += c;
+      }
+    }
+
+    if (cell.length || row.length) {
+      row.push(cell.trim());
+      if (row.some(v => v !== '')) rows.push(row);
+    }
+
+    return rows;
+  }
+
+  function saveLocal() {
+    try {
+      localStorage.setItem('dfwListings', JSON.stringify({ dataset, dupeCount }));
+    } catch (err) {
+      console.warn('Could not save local data', err);
+    }
+  }
+
+  function loadLocal() {
+    try {
+      const raw = localStorage.getItem('dfwListings');
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      dataset = Array.isArray(parsed.dataset) ? parsed.dataset : [];
+      dupeCount = Number(parsed.dupeCount || 0);
+      log(`Loaded ${dataset.length} saved listings from this browser`, 'info');
+    } catch (err) {
+      console.warn('Could not load local data', err);
+    }
+  }
+
+  let searchDebounce;
+  function onSearch() {
+    clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(renderTable, 200);
+  }
+
+  function stars(rating) {
+    if (!rating) return '<span style="color:#555;">No rating</span>';
+    const full = Math.round(rating);
+    return `<span class="stars">${'★'.repeat(full)}${'☆'.repeat(5-full)}</span><span class="rating-num">${rating}</span>`;
+  }
+
+  function typeLabel(type) {
+    const t = (type || '').toLowerCase();
+    const labels = {
+      'assisted living': 'Assisted Living', 'assisted': 'Assisted Living',
+      'memory care': 'Memory Care', 'memory': 'Memory Care',
+      'independent living': 'Independent Living', 'independent': 'Independent Living',
+      'skilled nursing': 'Skilled Nursing', 'skilled': 'Skilled Nursing'
+    };
+    const colors = {
+      'assisted living': 'badge-al', 'assisted': 'badge-al',
+      'memory care': 'badge-mc', 'memory': 'badge-mc',
+      'independent living': 'badge-il', 'independent': 'badge-il',
+      'skilled nursing': 'badge-dup', 'skilled': 'badge-dup'
+    };
+    const label = labels[t] || type || 'Unknown';
+    const cls = colors[t] || 'badge-al';
+    return `<span class="badge ${cls}">${label}</span>`;
+  }
+
+  function sourceLabel(source) {
+    const map = { 'Google':'badge-google', 'TULIP':'badge-tulip', 'Both':'badge-dup' };
+    return `<span class="badge ${map[source]||'badge-google'}">${source}</span>`;
+  }
+
+  // ─── EDIT PANEL ──────────────────────────────────────
+  function openEdit(id) {
+    const r = dataset.find(x => x.id === id);
+    if (!r) return;
+    editingId = id;
+    
+    // Show read-only auto-populated fields
+    const roEl = document.getElementById('editReadonlys');
+    const roFields = [
+      ['Name', r.name], ['Type', r.type], ['City', r.city],
+      ['Address', r.address], ['Rating', r.rating ? r.rating + ' ★' : '—'],
+      ['Reviews', r.reviewCount || '—'], ['Source', r.source || '—'],
+      ['Website', r.website ? '✓ Has website' : '—'],
+      ['Lat/Lng', (r.lat && r.lng) ? r.lat.toString().slice(0,7) + ', ' + r.lng.toString().slice(0,8) : '—'],
+      ['License #', r.licenseNumber || '—'], ['Capacity', r.capacity || '—'],
+    ].filter(([,v]) => v && v !== '—');
+    roEl.innerHTML = roFields.map(([k,v]) => `<div class="ro-chip"><strong>${k}:</strong> ${v}</div>`).join('')
+      + (r.mapsUrl ? `<div class="ro-chip"><a href="${r.mapsUrl}" target="_blank" style="color:#90CAF9;">🗺️ View on Google Maps</a></div>` : '')
+      + (r._aiError ? `<div class="ro-chip" style="width:100%;border-color:#7F3030;background:#2A1111;color:#FFB4B4;white-space:pre-wrap;"><strong>AI Error:</strong><br>${String(r._aiError).replace(/</g,'&lt;')}</div>` : '');
+
+    // Show photo preview if images exist
+    const photoPreview = document.getElementById('editPhotoPreview');
+    if (photoPreview) {
+      const imgs = r.images || [];
+      if (imgs.length) {
+        photoPreview.innerHTML = `<div style="font-size:.72rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--sage);margin-bottom:6px;">📷 ${imgs.length} Google Photos</div><div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;">${imgs.map((url,i) => `<img src="${url}" style="height:60px;width:auto;border-radius:6px;border:1px solid #333;flex-shrink:0;cursor:pointer;" title="Photo ${i+1}" onerror="this.style.display='none'" onclick="event.stopPropagation();window.open('${url}','_blank')">`).join('')}</div>`;
+        photoPreview.style.display = 'block';
+      } else {
+        photoPreview.innerHTML = '';
+        photoPreview.style.display = 'none';
+      }
+    }
+
+    // Show testimonial preview if reviews exist
+    const reviewPreview = document.getElementById('editReviewPreview');
+    if (reviewPreview) {
+      const revs = r.reviews || [];
+      if (revs.length) {
+        reviewPreview.innerHTML = `<div style="font-size:.72rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#64B5F6;margin-bottom:6px;">💬 ${revs.length} Testimonial${revs.length>1?'s':''} from Google</div>`
+          + revs.map(rv => `<div style="background:#1E1E1E;border:1px solid #333;border-radius:8px;padding:10px 12px;margin-bottom:6px;font-size:.82rem;color:#CCC;line-height:1.5;"><strong style="color:#EEE;">${rv.author}</strong>${rv.rating ? ` <span style="color:var(--honey);">${'★'.repeat(rv.rating)}</span>` : ''}${rv.time ? ` <span style="color:#666;font-size:.75rem;">· ${rv.time}</span>` : ''}<div style="margin-top:4px;">"${rv.text}"</div></div>`).join('');
+        reviewPreview.style.display = 'block';
+      } else {
+        reviewPreview.innerHTML = '';
+        reviewPreview.style.display = 'none';
+      }
+    }
+
+    // Set title
+    document.getElementById('editTitle').textContent = r.name || 'Edit Listing';
+
+    // Fill editable fields
+    document.getElementById('ed-priceRange').value = r.priceRange || '';
+    document.getElementById('ed-email').value = r.email || '';
+    document.getElementById('ed-image').value = r.image || '';
+    document.getElementById('ed-description').value = r.description || '';
+    document.getElementById('ed-premium').value = r.premium ? 'true' : 'false';
+    document.getElementById('ed-phone').value = r.phone || '';
+    document.getElementById('ed-name').value = r.name || '';
+
+    // Set budget tags
+    const budgetArr = r.budget || [];
+    document.querySelectorAll('#ed-budget .amenity-tag').forEach(t => {
+      t.classList.toggle('on', budgetArr.includes(t.dataset.val));
+    });
+
+    // Set amenity tags
+    const amenArr = r.amenities || [];
+    document.querySelectorAll('#ed-amenities .amenity-tag').forEach(t => {
+      t.classList.toggle('on', amenArr.includes(t.dataset.val));
+    });
+
+    updateCompleteness(r);
+    document.getElementById('editOverlay').classList.add('show');
+    document.getElementById('ed-priceRange').focus();
+  }
+
+  function closeEdit() {
+    document.getElementById('editOverlay').classList.remove('show');
+    editingId = null;
+  }
+
+  function toggleTag(el) {
+    el.classList.toggle('on');
+  }
+
+  function getTagValues(containerId) {
+    return Array.from(document.querySelectorAll(`#${containerId} .amenity-tag.on`)).map(t => t.dataset.val);
+  }
+
+  function saveEdit() {
+    const r = dataset.find(x => x.id === editingId);
+    if (!r) return;
+
+    r.priceRange = document.getElementById('ed-priceRange').value.trim();
+    r.email = document.getElementById('ed-email').value.trim();
+    r.image = document.getElementById('ed-image').value.trim();
+    r.description = document.getElementById('ed-description').value.trim();
+    r.premium = document.getElementById('ed-premium').value === 'true';
+    r.budget = getTagValues('ed-budget');
+    r.amenities = getTagValues('ed-amenities');
+    applyPricing(r);
+
+    // Allow overrides
+    const phoneOverride = document.getElementById('ed-phone').value.trim();
+    if (phoneOverride) r.phone = phoneOverride;
+    const nameOverride = document.getElementById('ed-name').value.trim();
+    if (nameOverride) r.name = nameOverride;
+
+    log(`Updated: ${r.name}`, 'success');
+    saveLocal();
+    renderTable();
+    updateCompleteness(r);
+    return r;
+  }
+
+  function saveAndNext() {
+    const currentId = editingId;
+    saveEdit();
+    closeEdit();
+    // Find next incomplete listing
+    const next = dataset.find(x => x.id !== currentId && !isComplete(x));
+    if (next) {
+      setTimeout(() => openEdit(next.id), 150);
+    } else {
+      const incomplete = dataset.filter(x => !isComplete(x)).length;
+      if (incomplete === 0) {
+        log('🎉 All listings are complete! Ready to export.', 'success');
+      } else {
+        log(`${incomplete} listings still need data`, 'warn');
+      }
+    }
+  }
+
+  // ─── PRICING ESTIMATOR ─────────────────────────────────
+  // Existing prices are preserved. Missing prices receive a clearly labeled
+  // estimate based on care type and DFW city pricing tier. If the estimate cannot
+  // be made reliably, use "Contact for pricing" rather than inventing a number.
+  const PRICING_BASELINES = { independent: [2800, 4200], assisted: [4500, 5800], memory: [6000, 7800], skilled: [7500, 9500] };
+  const PREMIUM_SUBURBS = ['frisco','southlake','plano','allen'];
+  const CORE_METRO = ['dallas','fort worth'];
+
+  function pricingTypeSlug(type) {
+    const t = Array.isArray(type) ? (type[0] || '') : (type || '');
+    const s = t.toLowerCase();
+    if (s.includes('memory') || s.includes('dementia')) return 'memory';
+    if (s.includes('independent')) return 'independent';
+    if (s.includes('skilled') || s.includes('nursing')) return 'skilled';
+    return 'assisted';
+  }
+
+  function cityPriceMultiplier(city) {
+    const c = (city || '').toLowerCase().trim();
+    if (PREMIUM_SUBURBS.some(x => c.includes(x))) return 1.15;
+    if (CORE_METRO.some(x => c.includes(x))) return 1;
+    return 0.90;
+  }
+
+  function parseExistingPrice(priceRange) {
+    const raw = String(priceRange || '').trim();
+    if (!raw) return null;
+    const nums = [...raw.matchAll(/(?:\$|USD\s*)?([\d,]+(?:\.\d+)?)/gi)].map(m => Number(m[1].replace(/,/g,''))).filter(Number.isFinite);
+    if (!nums.length) return null;
+    const minPrice = Math.round(nums[0]);
+    const maxPrice = Math.round(nums.length > 1 ? nums[1] : nums[0]);
+    return { pricingType: nums.length > 1 ? 'range' : 'exact', minPrice, maxPrice, displayPrice: raw, isEstimated: false };
+  }
+
+  function budgetTagsForRange(minPrice, maxPrice) {
+    const tags = [];
+    if (minPrice < 3000) tags.push('under3k');
+    if (maxPrice >= 3000 && minPrice <= 5000) tags.push('3k-5k');
+    if (maxPrice >= 5000 && minPrice <= 8000) tags.push('5k-8k');
+    if (maxPrice >= 8000) tags.push('8kplus');
+    return tags.length ? tags : ['8kplus'];
+  }
+
+  function estimatePricing(r) {
+    const existing = parseExistingPrice(r.priceRange);
+    if (existing) return { pricing: existing, budgetTags: budgetTagsForRange(existing.minPrice, existing.maxPrice) };
+
+    // The estimate is intentionally conservative and formula-based. Never turn
+    // missing/ambiguous source data into a made-up price.
+    const careType = pricingTypeSlug(r.type);
+    const city = String(r.city || '').trim();
+    const hasUsableCareType = ['independent','assisted','memory','skilled'].includes(careType);
+    if (!city || !hasUsableCareType) {
+      return {
+        pricing: { pricingType: 'contact', minPrice: null, maxPrice: null, displayPrice: 'Contact for pricing', isEstimated: false },
+        budgetTags: []
+      };
+    }
+
+    const baseline = PRICING_BASELINES[careType];
+    const multiplier = cityPriceMultiplier(city);
+    const minPrice = Math.round((baseline[0] * multiplier) / 100) * 100;
+    const maxPrice = Math.round((baseline[1] * multiplier) / 100) * 100;
+
+    // Safety check: if the formula produces a non-positive, inverted, or
+    // implausibly high monthly range, do not publish a numeric estimate.
+    if (!Number.isFinite(minPrice) || !Number.isFinite(maxPrice) || minPrice <= 0 || maxPrice < minPrice || maxPrice > 15000) {
+      return {
+        pricing: { pricingType: 'contact', minPrice: null, maxPrice: null, displayPrice: 'Contact for pricing', isEstimated: false },
+        budgetTags: []
+      };
+    }
+
+    return {
+      pricing: { pricingType: 'estimated', minPrice, maxPrice, displayPrice: `Est. $${minPrice.toLocaleString('en-US')} - $${maxPrice.toLocaleString('en-US')} / mo`, isEstimated: true },
+      budgetTags: budgetTagsForRange(minPrice, maxPrice)
+    };
+  }
+
+  function applyPricing(r) {
+    const result = estimatePricing(r);
+    if (!String(r.priceRange || '').trim()) r.priceRange = result.pricing.displayPrice;
+    r.pricing = result.pricing;
+    r.budgetTags = result.budgetTags;
+    if ((!r.budget || !r.budget.length) && result.budgetTags.length) r.budget = result.budgetTags.slice();
+    return result;
+  }
+
+  function applyPricingToDataset() {
+    let estimated = 0;
+    dataset.forEach(r => { const hadPrice = !!String(r.priceRange || '').trim(); const result = applyPricing(r); if (!hadPrice && result.pricing.isEstimated) estimated++; });
+    return estimated;
+  }
+
+  function isComplete(r) {
+    return !!(r.priceRange && r.email && r.description && r.amenities && r.amenities.length > 0 && r.budget && r.budget.length > 0);
+  }
+
+  function completenessScore(r) {
+    let score = 0, total = 6;
+    if (r.priceRange) score++;
+    if (r.email) score++;
+    if (r.image) score++;
+    if (r.description) score++;
+    if (r.amenities && r.amenities.length) score++;
+    if (r.budget && r.budget.length) score++;
+    return Math.round((score / total) * 100);
+  }
+
+  function updateCompleteness(r) {
+    const pct = completenessScore(r);
+    const fill = document.getElementById('editCompFill');
+    const text = document.getElementById('editCompText');
+    fill.style.width = pct + '%';
+    fill.style.background = pct === 100 ? 'var(--sage)' : pct >= 50 ? 'var(--honey)' : '#E57373';
+    text.textContent = pct === 100 ? '✓ Complete!' : pct + '% complete';
+  }
+
+  // ─── AI AUTO-FILL (GROQ + LIVE WEB RESEARCH) ──────────────────────────
+  async function callGroq(prompt) {
+    const key = document.getElementById('groq-key').value.trim();
+    if (!key) throw new Error('No Groq API key');
+
+    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${key}`,
+        'Groq-Model-Version': 'latest'
+      },
+      body: JSON.stringify({
+        model: 'groq/compound-mini',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.25,
+        max_completion_tokens: 700,
+        response_format: { type: 'json_object' },
+        citation_options: 'disabled',
+        compound_custom: {
+          tools: {
+            enabled_tools: ['web_search']
+          }
+        }
+      })
+    });
+
+    const requestId = resp.headers.get('x-request-id') || resp.headers.get('request-id') || '';
+    const rateRemaining = resp.headers.get('x-ratelimit-remaining-requests') || '';
+    const rateReset = resp.headers.get('x-ratelimit-reset-requests') || '';
+    const retryAfter = resp.headers.get('retry-after') || resp.headers.get('x-ratelimit-reset-requests') || '';
+
+    if (!resp.ok) {
+      let rawBody = '';
+      let msg = `Groq API error ${resp.status}${resp.statusText ? ` ${resp.statusText}` : ''}`;
+      let code = '';
+      try {
+        rawBody = await resp.text();
+        let e = null;
+        try { e = JSON.parse(rawBody); } catch (_) {}
+        msg = e?.error?.message || e?.message || msg;
+        code = e?.error?.code || '';
+      } catch (_) {}
+      const isTooLarge = resp.status === 413 || code === 'request_too_large';
+      const details = [
+        msg,
+        resp.status === 429 ? 'RATE_LIMITED: Groq is throttling this request.' : '',
+        isTooLarge ? 'KNOWN_GROQ_ISSUE: Compound\u2019s internal web search occasionally pulls in a large page and Groq reports it as "request too large" even though the outgoing prompt here is small. This is not caused by this listing\u2019s data — retrying (often 1-2 more times) usually succeeds.' : '',
+        retryAfter ? `Retry-After / reset: ${retryAfter}` : '',
+        rateRemaining ? `Remaining requests: ${rateRemaining}` : '',
+        requestId ? `Request ID: ${requestId}` : '',
+        rawBody && rawBody !== msg ? `Response body: ${rawBody.slice(0, 4000)}` : ''
+      ].filter(Boolean).join('\n');
+      const err = new Error(details);
+      err.status = resp.status;
+      err.code = code;
+      err.isTooLarge = isTooLarge;
+      err.retryAfter = retryAfter;
+      err.rateRemaining = rateRemaining;
+      throw err;
+    }
+
+    const data = await resp.json();
+    const message = data?.choices?.[0]?.message || {};
+    const text = message?.content || '';
+    if (!text) {
+      const details = [
+        'Groq returned HTTP 200 but no message content.',
+        data?.error?.message ? `API error: ${data.error.message}` : '',
+        requestId ? `Request ID: ${requestId}` : '',
+        `Response keys: ${Object.keys(data || {}).join(', ') || '(none)'}`
+      ].filter(Boolean).join('\n');
+      throw new Error(details);
+    }
+
+    // Groq Compound exposes the web research it executed. Capture any URLs we can
+    // recover from those results as an additional source trail.
+    const groundedSources = [];
+    const seenUrls = new Set();
+    const addUrl = (url, title = '') => {
+      if (!url || !/^https?:\/\//i.test(url) || seenUrls.has(url)) return;
+      seenUrls.add(url);
+      groundedSources.push({ title: title || url, url, type: 'web' });
+    };
+
+    const executedTools = message?.executed_tools || [];
+    for (const tool of executedTools) {
+      const raw = [tool?.output, tool?.arguments].filter(Boolean).join('\\n');
+      const urlMatches = raw.match(/https?:\/\/[^\s"'<>]+/gi) || [];
+      urlMatches.forEach(u => addUrl(u.replace(/[),.;]+$/, '')));
+    }
+
+    // Strip accidental markdown fences and parse JSON defensively.
+    const cleaned = text.replace(/```json\\s*/gi, '').replace(/```\\s*/g, '').trim();
+    try {
+      const parsed = JSON.parse(cleaned);
+      if (!Array.isArray(parsed.researchSources) || !parsed.researchSources.length) {
+        parsed.researchSources = groundedSources;
+      } else {
+        // Keep AI-provided sources, then append any additional URLs recovered from tool output.
+        const existing = new Set(parsed.researchSources.map(x => x?.url).filter(Boolean));
+        for (const src of groundedSources) if (!existing.has(src.url)) parsed.researchSources.push(src);
+      }
+      return parsed;
+    } catch(e) {
+      // Try to find a complete JSON object by matching balanced braces.
+      let depth = 0, start = -1;
+      for (let i = 0; i < cleaned.length; i++) {
+        if (cleaned[i] === '{') { if (start === -1) start = i; depth++; }
+        else if (cleaned[i] === '}') {
+          depth--;
+          if (depth === 0 && start !== -1) {
+            try {
+              const parsed = JSON.parse(cleaned.slice(start, i + 1));
+              if (!Array.isArray(parsed.researchSources) || !parsed.researchSources.length) parsed.researchSources = groundedSources;
+              return parsed;
+            } catch(e2) { break; }
+          }
+        }
+      }
+      throw new Error([
+        'Could not parse Groq response as JSON.',
+        requestId ? `Request ID: ${requestId}` : '',
+        `Raw response (first 4000 chars):\n${cleaned.slice(0, 4000)}`
+      ].filter(Boolean).join('\n'));
+    }
+  }
+
+  function buildAIPrompt(r) {
+    // Keep each Groq request intentionally tiny. Only ask the model for fields that
+    // are actually missing on this listing; the collector handles pricing locally.
+    const clip = (value, max = 160) => String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
+    const name = clip(r.name, 120);
+    const type = clip(Array.isArray(r.type) ? r.type.join(', ') : r.type, 60);
+    const city = clip(r.city, 60);
+    const address = clip(r.address, 140);
+    const website = clip(r.website || '', 180);
+    const fields = [];
+
+    if (!r.description) fields.push('description: 60-80 word factual directory description');
+    if (!r.amenities || !r.amenities.length) fields.push('amenities: only verified facility-specific items in social,dining,outdoor,medical');
+    if (!r.email) fields.push('suggestedEmail: public facility-specific email or empty');
+    if (!r.address) fields.push('verifiedAddress: exact street address, city, state, ZIP if verified');
+    if (!r.mapsUrl) fields.push('googleMapsUrl: actual Google Maps URL if found, otherwise empty');
+    fields.push('researchSummary: one concise sentence');
+    fields.push('researchSources: up to 3 useful source URLs');
+    fields.push('careTypeCorrected: assisted|independent|memory|skilled');
+
+    return `Research this exact senior-living facility in DFW with live web search. Be concise. Verify identity/location first. Prioritize the official site, then Google/Maps, government/state records, reputable directories or local publications. Only state facts directly supported by sources; never invent amenities, care, pricing, awards, licensing, staffing or activities.
+
+NAME: ${name}
+TYPE: ${type || 'unknown'}
+CITY: ${city || 'unknown'}
+ADDRESS: ${address || 'unknown'}
+WEBSITE: ${website || 'unknown'}
+
+RETURN JSON ONLY with these fields:
+{${fields.map(f => `"${f.split(':')[0]}": ${f.includes('amenities') ? '[]' : f.includes('researchSources') ? '[]' : '""'}`).join(', ')}}
+For researchSources use objects like {"title":"...","url":"https://...","type":"official|government|directory|news|other"}. Do not fabricate URLs.`;
+  }
+
+  async function aiFillRecord(r) {
+    try {
+      const result = await callGroq(buildAIPrompt(r));
+    
+    // Only fill fields that are currently empty
+    if (!r.description && result.description) r.description = result.description;
+    if ((!r.budget || !r.budget.length) && result.budget) r.budget = result.budget;
+    if ((!r.amenities || !r.amenities.length) && result.amenities) r.amenities = result.amenities;
+    if (!r.email && result.suggestedEmail) r.email = result.suggestedEmail;
+    if (Array.isArray(result.researchSources) && result.researchSources.length) r.researchSources = result.researchSources;
+    if (result.researchSummary) r.researchSummary = result.researchSummary;
+    // Preserve/record researched location details without overwriting supplied data with guesses.
+    if (result.locationVerified === true) r.locationVerified = true;
+    if (!r.address && result.verifiedAddress) r.address = result.verifiedAddress;
+    if (result.googleMapsUrl && /^https?:\/\/(www\.)?google\.com\/maps/i.test(result.googleMapsUrl)) r.mapsUrl = result.googleMapsUrl;
+    r.descriptionSource = 'web-researched';
+    // Always apply type correction if AI provides one (normalizes "Assisted Living Facility" → "assisted")
+    if (result.careTypeCorrected) {
+      const corrected = result.careTypeCorrected.toLowerCase();
+      if (['assisted','independent','memory','skilled'].includes(corrected)) {
+        r.type = corrected;
+      }
+    }
+    applyPricing(r);
+      r._aiFilled = true;
+      r._verified = false;
+      delete r._aiError;
+      return r;
+    } catch (err) {
+      r._aiError = String(err?.message || err || 'Unknown Groq error');
+      throw err;
+    }
+  }
+
+  async function aiFillSingle() {
+    const key = document.getElementById('groq-key').value.trim();
+    if (!key) { alert('Enter your Groq API key in the sidebar first.'); return; }
+    
+    const r = dataset.find(x => x.id === editingId);
+    if (!r) return;
+
+    const btn = document.getElementById('aiFillBtn');
+    btn.disabled = true;
+    btn.innerHTML = '🌐 Researching...';
+
+    try {
+      await aiFillRecord(r);
+      
+      // Update the edit panel fields with AI-generated data
+      document.getElementById('ed-priceRange').value = r.priceRange || '';
+      document.getElementById('ed-email').value = r.email || '';
+      document.getElementById('ed-description').value = r.description || '';
+      
+      // Set budget tags
+      document.querySelectorAll('#ed-budget .amenity-tag').forEach(t => {
+        t.classList.toggle('on', (r.budget || []).includes(t.dataset.val));
+      });
+      // Set amenity tags
+      document.querySelectorAll('#ed-amenities .amenity-tag').forEach(t => {
+        t.classList.toggle('on', (r.amenities || []).includes(t.dataset.val));
+      });
+      
+      updateCompleteness(r);
+      log(`🌐 Researched + AI filled: ${r.name}`, 'success');
+    } catch(err) {
+      log(`AI error for ${r.name}: ${err.message}`, 'error');
+      alert('AI fill failed: ' + err.message);
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '🌐 AI Research + Fill This Listing';
+  }
+
+  function parseRetryDelayMs(err, fallbackMs = 3500) {
+    const raw = String(err?.retryAfter || '').trim();
+    if (!raw) return fallbackMs;
+    const sec = Number(raw);
+    if (Number.isFinite(sec)) return Math.max(1000, Math.min(sec * 1000, 120000));
+    const dateMs = Date.parse(raw);
+    if (Number.isFinite(dateMs)) return Math.max(1000, Math.min(dateMs - Date.now(), 120000));
+    return fallbackMs;
+  }
+
+  async function aiFillWithRetry(r, maxAttempts = 4) {
+    let lastErr = null;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        return await aiFillRecord(r);
+      } catch (err) {
+        lastErr = err;
+        const status = Number(err?.status || 0);
+        const retryable = status === 429 || err?.isTooLarge;
+        if (!retryable || attempt === maxAttempts) throw err;
+        const delayMs = err?.isTooLarge
+          ? Math.min(2000 * attempt, 12000)
+          : parseRetryDelayMs(err, Math.min(3500 * Math.pow(2, attempt - 1), 30000));
+        const reason = err?.isTooLarge ? 'Compound web search overflow' : 'Rate limited';
+        log(`\u23f3 ${reason} on ${r.name}. Waiting ${Math.ceil(delayMs / 1000)}s before retry ${attempt + 1}/${maxAttempts}...`, 'warn');
+        showAIError(String(err?.message || err), `${reason} · ${r.name} · retry ${attempt + 1}/${maxAttempts}`);
+        await sleep(delayMs);
+      }
+    }
+    throw lastErr || new Error('AI request failed');
+  }
+
+  async function bulkAIFill() {
+    const key = document.getElementById('groq-key').value.trim();
+    if (!key) { alert('Enter your Groq API key first.'); return; }
+    if (!dataset.length) { alert('Load some data first.'); return; }
+    clearAIError();
+
+    // Only process listings currently visible in the filtered view. The slider
+    // controls how many incomplete listings are researched in this run.
+    const visible = getFilteredList();
+    const available = visible.filter(x => !isComplete(x) && !x._aiFilled);
+    const slider = document.getElementById('ai-batch-size');
+    const requested = Math.max(1, parseInt(slider?.value, 10) || 1);
+    const incomplete = available.slice(0, requested);
+    
+    if (!available.length) {
+      const totalIncomplete = dataset.filter(x => !isComplete(x) && !x._aiFilled).length;
+      if (totalIncomplete > 0) {
+        alert(`No incomplete listings in your current filter (${visible.length} shown).\n\nThere are ${totalIncomplete} incomplete listings in the full dataset. Clear your filters to process all, or adjust your filter.`);
+      } else {
+        alert('All listings are already complete or AI-filled!');
+      }
+      return;
+    }
+
+    const proceed = confirm(`AI Fill will research the first ${incomplete.length} incomplete listing${incomplete.length === 1 ? '' : 's'} from your current filtered view (${visible.length} shown).\n\nThe full dataset has ${dataset.length} total listings, with ${available.length} incomplete listing${available.length === 1 ? '' : 's'} available in this view.\n\nEstimated web-search cost varies by Groq usage; review your Groq dashboard before bulk runs.\nEstimated time: ~${Math.max(1, Math.ceil(incomplete.length * 0.8 / 60))} minute${incomplete.length === 1 ? '' : 's'}\n\nContinue?`);
+    if (!proceed) return;
+
+    const btn = document.getElementById('bulk-ai-btn');
+    btn.disabled = true;
+    btn.textContent = `🌐 Processing ${incomplete.length}...`;
+    document.getElementById('ai-progress').classList.add('show');
+
+    let filled = 0, errors = 0;
+    log(`Starting bulk AI fill: ${incomplete.length} listings to process`, 'info');
+
+    for (let i = 0; i < incomplete.length; i++) {
+      const r = incomplete[i];
+      try {
+        await aiFillWithRetry(r);
+        filled++;
+        log(`  ✅ ${r.name} — researched + filled`, 'success');
+      } catch(err) {
+        errors++;
+        const msg = String(err?.message || err || 'Unknown Groq error');
+        log(`  ❌ ${r.name} — ${msg.replace(/\s+/g, ' ').slice(0, 500)}`, 'error');
+        showAIError(msg, `Failed listing: ${r.name} · ${i + 1}/${incomplete.length}`);
+      }
+
+      const pct = Math.round(((i + 1) / incomplete.length) * 100);
+      document.getElementById('ai-prog-fill').style.width = pct + '%';
+      document.getElementById('ai-prog-text').textContent = `${i + 1}/${incomplete.length} — ${filled} filled, ${errors} errors`;
+
+      // Pace requests below Groq's per-minute request ceiling even when the API is healthy.
+      // 2500ms is ~24 requests/minute, leaving headroom for transient retries.
+      if (i < incomplete.length - 1) await sleep(2500);
+    }
+
+    log(`Bulk AI fill complete: ${filled} filled, ${errors} errors`, filled ? 'success' : 'warn');
+    log(`⚠️ IMPORTANT: AI-generated data is estimated. Review descriptions, prices, and emails before publishing. Listings marked _verified: false need human review.`, 'warn');
+    btn.disabled = false;
+    updateAIBatchSize(document.getElementById('ai-batch-size')?.value || 1);
+    document.getElementById('ai-progress').classList.remove('show');
+    updateStats();
+    saveLocal();
+    renderTable();
+    if (filled > 0) {
+      alert('AI fill complete!\n\n⚠️ IMPORTANT: All AI-generated data is estimated.\n\n• Descriptions are general — they don\'t make specific claims about facilities\n• Prices are DFW market estimates, NOT verified rates\n• Emails are only added when a public facility-specific email is found\n• Amenities are only added when supported by web research\n\nReview each listing before publishing. Click any row to edit.');
+    }
+  }
+
+  async function retryFailedAI() {
+    const key = document.getElementById('groq-key').value.trim();
+    if (!key) { alert('Enter your Groq API key first.'); return; }
+    const visible = getFilteredList();
+    const failed = visible.filter(r => r._aiError);
+    if (!failed.length) { alert('No failed AI listings are visible in the current filter.'); return; }
+    const proceed = confirm(`Retry AI research for ${failed.length} failed listing${failed.length === 1 ? '' : 's'}?\n\nThis will make new Groq API calls.`);
+    if (!proceed) return;
+    clearAIError();
+    const btn = document.getElementById('retry-ai-btn');
+    btn.disabled = true;
+    let filled = 0, errors = 0;
+    for (let i = 0; i < failed.length; i++) {
+      const r = failed[i];
+      try {
+        await aiFillWithRetry(r);
+        filled++;
+        log(`  ✅ Retry succeeded: ${r.name}`, 'success');
+      } catch (err) {
+        errors++;
+        const msg = String(err?.message || err || 'Unknown Groq error');
+        log(`  ❌ Retry failed: ${r.name} — ${msg.replace(/\s+/g, ' ').slice(0, 500)}`, 'error');
+        showAIError(msg, `Retry failed listing: ${r.name} · ${i + 1}/${failed.length}`);
+      }
+      if (i < failed.length - 1) await sleep(2500);
+    }
+    btn.disabled = false;
+    updateStats();
+    saveLocal();
+    renderTable();
+    log(`Retry complete: ${filled} filled, ${errors} errors`, errors ? 'warn' : 'success');
+  }
+
+  // ─── RENDER TABLE ────────────────────────────────────
+  function getFilteredList() {
+    const search = document.getElementById('search-filter').value.toLowerCase();
+    const typeF = document.getElementById('type-filter').value;
+    const sourceF = document.getElementById('source-filter').value;
+    return dataset.filter(r => {
+      const text = `${r.name} ${r.city} ${r.type} ${r.address}`.toLowerCase();
+      const typeMatch = !typeF || r.type === typeF || r.type?.toLowerCase() === typeF.toLowerCase();
+      return (!search || text.includes(search))
+        && typeMatch
+        && (!sourceF || r.source === sourceF);
+    });
+  }
+
+  function renderTable() {
+    let filtered = getFilteredList();
+
+    document.getElementById('showing-count').textContent = filtered.length;
+    document.getElementById('total-count').textContent = dataset.length;
+
+    const tbody = document.getElementById('table-body');
+    if (!filtered.length) {
+      tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><div class="es-icon">🔍</div><p>${dataset.length ? 'No results match your filter.' : 'No listings yet.<br>Pull from Google Places or import a TULIP CSV.'}</p></div></td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = filtered.map((r, i) => {
+      const pct = completenessScore(r);
+      const pctColor = pct === 100 ? '#81C784' : pct >= 50 ? '#FFB74D' : '#EF9A9A';
+      const pctDot = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${pctColor};margin-right:6px;" title="${pct}% complete"></span>`;
+      const aiTag = r._aiFilled ? '<span style="display:inline-block;background:#7B68EE20;color:#7B68EE;border:1px solid #7B68EE40;padding:1px 6px;border-radius:4px;font-size:.65rem;font-weight:700;margin-left:6px;">AI</span>' : '';
+      const aiErrorTag = r._aiError ? '<span class="ai-failed-tag" title="AI research failed — open listing for details">AI ERROR</span>' : '';
+      const photoTag = r.images && r.images.length ? `<span style="display:inline-block;background:#4CAF5020;color:#4CAF50;border:1px solid #4CAF5040;padding:1px 6px;border-radius:4px;font-size:.65rem;font-weight:700;margin-left:4px;">📷${r.images.length}</span>` : '';
+      const reviewTag = r.reviews && r.reviews.length ? `<span style="display:inline-block;background:#1565C020;color:#64B5F6;border:1px solid #1565C040;padding:1px 6px;border-radius:4px;font-size:.65rem;font-weight:700;margin-left:4px;">💬${r.reviews.length}</span>` : '';
+      const mapsHref = r.mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((r.name || '') + ' ' + (r.address || ''))}`;
+      return `
+      <tr style="cursor:pointer;" onclick="openEdit('${r.id}')">
+        <td>${pctDot}<strong style="color:#EEE;">${r.name}</strong>${aiTag}${aiErrorTag}${photoTag}${reviewTag}${r.licenseNumber ? `<br><span style="font-size:0.72rem;color:#555;margin-left:14px;">Lic: ${r.licenseNumber}</span>` : ''}</td>
+        <td>${typeLabel(r.type)}</td>
+        <td>${r.city}</td>
+        <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${r.address}">${r.address}</td>
+        <td style="white-space:nowrap;">${r.phone || '<span style="color:#555;">—</span>'}</td>
+        <td style="white-space:nowrap;">${stars(r.rating)}${r.reviewCount ? `<br><span style="font-size:0.72rem;color:#555;">${r.reviewCount} reviews</span>` : ''}</td>
+        <td>${r.website ? `<a href="${r.website}" target="_blank" style="color:var(--honey);font-size:0.78rem;text-decoration:none;" onclick="event.stopPropagation();">🔗 Website</a><br>` : ""}<a href="${mapsHref}" target="_blank" style="color:#90CAF9;font-size:0.75rem;text-decoration:none;" onclick="event.stopPropagation();">🗺️ Map${r.mapsUrl ? '' : ' (search)'}</a></td>
+        <td>${sourceLabel(r.source)}${r.capacity ? `<br><span style="font-size:0.72rem;color:#555;">${r.capacity} beds</span>` : ''}</td>
+        <td><button class="row-del" onclick="event.stopPropagation();deleteRow('${r.id}')" title="Remove">✕</button></td>
+      </tr>`;
+    }).join('');
+  }
+
+  function deleteRow(id) {
+    dataset = dataset.filter(r => r.id !== id);
+    updateStats();
+    saveLocal();
+    renderTable();
+  }
+
+  function clearAll() {
+    if (!dataset.length || confirm('Clear all data?')) {
+      dataset = [];
+      dupeCount = 0;
+      updateStats();
+      saveLocal();
+      renderTable();
+      log('Dataset cleared', 'warn');
+    }
+  }
+
+  // ─── EXPORT ──────────────────────────────────────────
+  function exportCSV() {
+    if (!dataset.length) { alert('No data to export.'); return; }
+    if (dataset.some(r => !isComplete(r)) && !confirm('Some listings are incomplete. Export anyway?')) return;
+    const headers = ['Name','Type','City','Address','Phone','Rating','Review Count','Website','Maps Link','Review 1','Review 2','Source','License Number','Capacity','License Status'];
+    const reviewCell = (r, i) => {
+      const rv = (r.reviews || [])[i];
+      return rv ? `${rv.author} (${rv.rating || '?'}★): ${rv.text}` : '';
+    };
+    const rows = dataset.map(r => [r.name,r.type,r.city,r.address,r.phone,r.rating,r.reviewCount,r.website,r.mapsUrl,reviewCell(r,0),reviewCell(r,1),r.source,r.licenseNumber,r.capacity,r.licenseStatus].map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(','));
+    const csv = [headers.join(','), ...rows].join('\n');
+    download(`frontporch_dfwlistings_${dateStamp()}.csv`, csv, 'text/csv');
+    log(`Exported ${dataset.length} listings to CSV`, 'success');
+  }
+
+  function exportJSON() {
+    if (!dataset.length) { alert('No data to export.'); return; }
+    if (dataset.some(r => !isComplete(r)) && !confirm('Some listings are incomplete. Export anyway?')) return;
+
+    // Map type labels to lowercase slugs matching frontporchdfw.com
+    function typeSlug(t) {
+      const raw = Array.isArray(t) ? t[0] : t;
+      const s = (raw || '').toLowerCase();
+      if (s.includes('memory') || s.includes('dementia')) return 'memory';
+      if (s.includes('independent')) return 'independent';
+      if (s.includes('skilled') || s.includes('nursing')) return 'skilled';
+      return 'assisted';
+    }
+
+    // Map city to area slug matching frontporchdfw.com
+    function areaSlug(city) {
+      const c = (city || '').toLowerCase();
+      if (['plano','frisco','mckinney','allen','richardson','prosper','celina','murphy','wylie'].some(x => c.includes(x))) return 'plano';
+      if (['fort worth','southlake','keller','colleyville','hurst','bedford','euless','grapevine'].some(x => c.includes(x))) return 'fortworth';
+      if (['arlington','irving','grand prairie','mansfield','duncanville','mesquite','garland'].some(x => c.includes(x))) return 'arlington';
+      return 'dallas';
+    }
+
+    // Fill missing prices with transparent formula-based estimates before export.
+    // If the formula cannot be trusted, the listing is exported as Contact for pricing.
+    const estimatedCount = applyPricingToDataset();
+    if (estimatedCount) log(`Added ${estimatedCount} clearly labeled formula-based pricing estimates for listings with missing prices.`, 'warn');
+
+    // Ensure every exported listing has a usable Google Maps link. Prefer the verified
+    // Google Places URL; otherwise create a deterministic Google Maps search link from
+    // the exact facility name + address rather than inventing a place URL.
+    let mapLinkCount = 0;
+    dataset.forEach(r => {
+      if (!r.mapsUrl) {
+        const query = [r.name, r.address, r.city, 'TX'].filter(Boolean).join(', ');
+        if (query.trim()) r.mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+      }
+      if (r.mapsUrl) mapLinkCount++;
+    });
+    if (mapLinkCount) log(`Google Maps links ready for ${mapLinkCount} listings (verified Places links preserved; missing links use exact-name/address Maps searches).`, 'success');
+
+    // Export in frontporchdfw.com listings.json format
+    const output = dataset.map((r, i) => ({
+      id: i + 1,
+      name: r.name || '',
+      type: typeSlug(r.type),
+      premium: !!r.premium,
+      address: r.address || '',
+      city: r.city || '',
+      area: areaSlug(r.city),
+      lat: parseFloat(r.lat) || null,
+      lng: parseFloat(r.lng) || null,
+      phone: r.phone || '',
+      email: r.email || '',
+      rating: parseFloat(r.rating) || 0,
+      reviewCount: parseInt(r.reviewCount) || 0,
+      mapsUrl: r.mapsUrl || '',
+      priceRange: r.priceRange || '',
+      budget: Array.isArray(r.budget) ? r.budget : [],
+      pricing: r.pricing || null,
+      budgetTags: Array.isArray(r.budgetTags) ? r.budgetTags : (Array.isArray(r.budget) ? r.budget : []),
+      amenities: Array.isArray(r.amenities) ? r.amenities : [],
+      image: r.image || '',
+      images: Array.isArray(r.images) ? r.images : [],
+      video: r.video || '',
+      description: r.description || '',
+      researchSummary: r.researchSummary || '',
+      descriptionSource: r.descriptionSource || '',
+      researchSources: Array.isArray(r.researchSources) ? r.researchSources : [],
+      reviews: Array.isArray(r.reviews) ? r.reviews : [],
+      // Extra fields for your reference (not used by site but useful)
+      _website: r.website || '',
+      _licenseNumber: r.licenseNumber || '',
+      _capacity: parseInt(r.capacity) || 0,
+      _licenseStatus: r.licenseStatus || '',
+      _source: r.source || '',
+      // Tracks whether AI research has already run on this listing (Groq here, or
+      // the Gemini Bridge tool) so it doesn't get redundantly re-researched.
+      _aiFilled: !!r._aiFilled,
+      _verified: !!r._verified
+    }));
+    download(`listings_${dateStamp()}.json`, JSON.stringify(output, null, 2), 'application/json');
+    log(`Exported ${output.length} listings in frontporchdfw.com format — ready to use as listings.json`, 'success');
+  }
+
+  // ─── IMPORT JSON (re-load a previously exported listings.json) ──────
+  // Accepts either this tool's own listings_*.json export (frontporchdfw.com
+  // format, with lowercase type slugs and _-prefixed reference fields), a raw
+  // array of listings in the internal working format, or {dataset:[...]} /
+  // {listings:[...]} wrapper objects. Merges into the current dataset using
+  // the same name-matching dedup logic as the Google/TULIP imports, so it's
+  // safe to import on top of existing work without creating duplicates.
+  function importTypeLabel(t) {
+    const raw = Array.isArray(t) ? t[0] : t;
+    const s = (raw || '').toLowerCase();
+    if (s.includes('memory') || s.includes('dementia') || s.includes('alzheimer')) return 'Memory Care';
+    if (s.includes('independent')) return 'Independent Living';
+    if (s.includes('skilled') || s.includes('nursing')) return 'Skilled Nursing';
+    if (s.includes('assisted') || s.includes('alf') || !s) return 'Assisted Living';
+    return raw;
+  }
+
+  function importJSON(input) {
+    const file = input.files && input.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      let parsed;
+      try {
+        parsed = JSON.parse(e.target.result);
+      } catch (err) {
+        log(`JSON import failed: couldn't parse file — ${err.message}`, 'error');
+        alert(`That file isn't valid JSON:\n${err.message}`);
+        input.value = '';
+        return;
+      }
+
+      const records = Array.isArray(parsed) ? parsed
+        : Array.isArray(parsed.dataset) ? parsed.dataset
+        : Array.isArray(parsed.listings) ? parsed.listings
+        : null;
+
+      if (!records) {
+        log('JSON import failed: expected a top-level array of listings (or {"dataset":[...]}/{"listings":[...]}).', 'error');
+        alert('That JSON doesn\'t look like a listings file — expected a top-level array of listings.');
+        input.value = '';
+        return;
+      }
+
+      let added = 0, merged = 0, skipped = 0;
+
+      records.forEach(rec => {
+        const name = (rec.name || '').trim();
+        if (!name) { skipped++; return; }
+
+        const record = {
+          id: name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'') || `import-${Date.now()}-${added}`,
+          name,
+          type: importTypeLabel(rec.type),
+          city: rec.city || '',
+          address: rec.address || '',
+          phone: rec.phone || '',
+          rating: rec.rating || '',
+          reviewCount: parseInt(rec.reviewCount) || 0,
+          website: rec.website || rec._website || '',
+          mapsUrl: rec.mapsUrl || '',
+          lat: rec.lat || '',
+          lng: rec.lng || '',
+          source: rec._source || rec.source || 'Import',
+          licenseNumber: rec.licenseNumber || rec._licenseNumber || '',
+          licenseType: rec.licenseType || '',
+          capacity: rec.capacity || rec._capacity || '',
+          photo: rec.photo || '',
+          lastVerified: rec.lastVerified || '',
+          priceRange: rec.priceRange || '',
+          email: rec.email || '',
+          image: rec.image || '',
+          images: Array.isArray(rec.images) ? rec.images : [],
+          reviews: Array.isArray(rec.reviews) ? rec.reviews : [],
+          description: rec.description || '',
+          amenities: Array.isArray(rec.amenities) ? rec.amenities : [],
+          budget: Array.isArray(rec.budget) ? rec.budget : [],
+          budgetTags: Array.isArray(rec.budgetTags) ? rec.budgetTags : [],
+          premium: !!rec.premium,
+          pricing: rec.pricing || null,
+          video: rec.video || '',
+          researchSummary: rec.researchSummary || '',
+          descriptionSource: rec.descriptionSource || '',
+          researchSources: Array.isArray(rec.researchSources) ? rec.researchSources : [],
+          _aiFilled: !!rec._aiFilled,
+          _verified: !!rec._verified
+        };
+
+        if (!isDuplicate(record)) {
+          dataset.push(record);
+          added++;
+        } else {
+          const existing = findMatch(record);
+          if (existing) {
+            if (existing.source !== record.source) existing.source = 'Both';
+            existing.website = existing.website || record.website;
+            existing.phone = existing.phone || record.phone;
+            existing.email = existing.email || record.email;
+            existing.lat = existing.lat || record.lat;
+            existing.lng = existing.lng || record.lng;
+            existing.mapsUrl = existing.mapsUrl || record.mapsUrl;
+            existing.description = existing.description || record.description;
+            existing.priceRange = existing.priceRange || record.priceRange;
+            existing.pricing = existing.pricing || record.pricing;
+            if (!existing.image && record.image) existing.image = record.image;
+            if ((!existing.images || !existing.images.length) && record.images.length) existing.images = record.images;
+            if ((!existing.reviews || !existing.reviews.length) && record.reviews.length) existing.reviews = record.reviews;
+            if ((!existing.amenities || !existing.amenities.length) && record.amenities.length) existing.amenities = record.amenities;
+            existing._aiFilled = existing._aiFilled || record._aiFilled;
+            existing._verified = existing._verified || record._verified;
+            merged++;
+            dupeCount++;
+          }
+        }
+      });
+
+      log(`JSON import complete: ${added} new listing(s) added, ${merged} merged into existing matches`
+        + `${skipped ? `, ${skipped} skipped (missing name)` : ''}. Total: ${dataset.length}`, 'success');
+      updateStats();
+      saveLocal();
+      renderTable();
+      input.value = '';
+    };
+    reader.onerror = () => {
+      log('JSON import failed: could not read the file.', 'error');
+      alert('Could not read that file.');
+      input.value = '';
+    };
+    reader.readAsText(file);
+  }
+
+  // ─── PHOTO EXPORT (download + rehost Google Places photos, direct to disk) ──
+  // Downloads every listing's photo(s) in-browser and writes them straight into
+  // a folder you pick on your own machine (via the File System Access API —
+  // Chrome/Edge only), then rewrites each listing's image/images fields (in
+  // memory) to point at the local "images/filename" paths instead of Google's
+  // places.googleapis.com URLs. After this runs, click "Export listings.json"
+  // to get a JSON that already points at those local paths.
+  //
+  // Why a folder picker instead of just writing to "the right path" directly:
+  // a webpage has no notion of where your site files live on disk, and
+  // browsers never allow a page to write to an arbitrary path without you
+  // explicitly granting access to a specific folder first — that permission
+  // prompt is a hard security boundary, not something this tool can skip.
+  // Pick your site's "images" folder itself (or any folder — files land
+  // directly inside whatever you choose, no subfolder is created for you).
+  //
+  // NOTE: individual photo fetches can still fail with a CORS error even when
+  // the same URL displays fine as an <img> tag elsewhere in this tool — that's
+  // expected, showing an image and reading its bytes from JS are subject to
+  // different browser rules. If every request fails that way, this method
+  // won't work at all and the standalone Python script (rehost_facility_images.py)
+  // is needed instead, since it isn't running inside a browser and isn't
+  // subject to that restriction.
+  function photoSlug(name) {
+    return (name || 'facility').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'facility';
+  }
+
+  function extFromContentType(ct) {
+    ct = (ct || '').split(';')[0].trim().toLowerCase();
+    if (ct === 'image/png') return '.png';
+    if (ct === 'image/webp') return '.webp';
+    if (ct === 'image/gif') return '.gif';
+    return '.jpg';
+  }
+
+  let photoExportRunning = false;
+  let imagesDirHandle = null; // File System Access API directory handle, kept for the session
+
+  // Prompts the user to pick a folder (a real native folder picker — the
+  // one-time permission prompt this triggers cannot be skipped by any site).
+  // Returns true if a folder was selected and write access granted.
+  async function pickImagesFolder() {
+    if (!window.showDirectoryPicker) {
+      log('This browser doesn\'t support picking a folder directly (needs Chrome or Edge) — File System Access API is unavailable.', 'error');
+      alert('Saving straight to a folder needs Chrome or Edge. This browser doesn\'t support it.');
+      return false;
+    }
+    try {
+      const handle = await window.showDirectoryPicker({ id: 'thanders-images-folder', mode: 'readwrite' });
+      imagesDirHandle = handle;
+      const statusEl = document.getElementById('folder-status');
+      if (statusEl) statusEl.textContent = `📁 Photos will be saved directly into: "${handle.name}"`;
+      const changeBtn = document.getElementById('change-folder-btn');
+      if (changeBtn) changeBtn.style.display = '';
+      log(`Selected folder "${handle.name}" — photos will be written directly into it.`, 'success');
+      return true;
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        log('Folder selection cancelled — nothing exported.', 'warn');
+      } else {
+        log(`Could not access that folder: ${err.message}`, 'error');
+      }
+      return false;
+    }
+  }
+
+  // Re-checks (and if needed, re-requests) write permission on a previously
+  // chosen folder handle — permission can be revoked by the browser between
+  // sessions/page loads even though the handle itself still exists in memory.
+  async function ensureWritePermission(handle) {
+    const opts = { mode: 'readwrite' };
+    if ((await handle.queryPermission(opts)) === 'granted') return true;
+    if ((await handle.requestPermission(opts)) === 'granted') return true;
+    return false;
+  }
+
+  async function exportPhotos() {
+    if (photoExportRunning) {
+      log('⚠️ A photo export is already running — ignoring this click. Wait for it to finish (or refresh the page to cancel) before starting another.', 'warn');
+      alert('A photo export is already in progress — wait for it to finish before starting another.');
+      return;
+    }
+    if (!window.showDirectoryPicker) {
+      log('This browser doesn\'t support picking a folder directly (needs Chrome or Edge) — File System Access API is unavailable.', 'error');
+      alert('Saving straight to a folder needs Chrome or Edge. This browser doesn\'t support it.');
+      return;
+    }
+
+    // Folder picker must run before any other await in this click handler so
+    // the browser still recognizes it as a direct response to your click.
+    if (!imagesDirHandle) {
+      const picked = await pickImagesFolder();
+      if (!picked) return;
+    } else if (!(await ensureWritePermission(imagesDirHandle))) {
+      log('Write permission for the previously selected folder was denied — pick a folder again.', 'error');
+      imagesDirHandle = null;
+      const picked = await pickImagesFolder();
+      if (!picked) return;
+    }
+
+    photoExportRunning = true;
+    const btn = document.getElementById('export-photos-btn');
+    const originalBtnText = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; }
+    const progWrap = document.getElementById('photo-progress');
+    const progFill = document.getElementById('photo-prog-fill');
+    const progText = document.getElementById('photo-prog-text');
+    if (progWrap) progWrap.classList.add('show');
+
+    // Everything this function reports goes through log(), which writes to
+    // the Activity Log tab — jump there immediately so progress/errors are
+    // never silently invisible on whatever tab was open when this was clicked.
+    const logTabBtn = document.querySelector('.tab[onclick*="tab-log"]');
+    if (logTabBtn) switchTab(logTabBtn, 'tab-log');
+    log(`📸 Export Photos clicked — writing directly into "${imagesDirHandle.name}"...`, 'info');
+
+    try {
+      if (!dataset.length) { log('No data to export.', 'error'); alert('No data to export.'); return; }
+
+      let okCount = 0, failCount = 0, corsCount = 0, forbiddenCount = 0, done = 0;
+
+      const jobs = dataset.map(r => ({
+        record: r,
+        urls: (Array.isArray(r.images) && r.images.length ? r.images : (r.image ? [r.image] : [])).slice(0, 5)
+      })).filter(j => j.urls.length);
+
+      const total = jobs.reduce((n, j) => n + j.urls.length, 0);
+      if (!total) {
+        log('No photo URLs found on any listing — nothing to export. Run a Google Places search first, or check that listings have an image/images field.', 'error');
+        alert('No photo URLs found on any listing.');
+        return;
+      }
+
+      log(`Starting photo export: ${jobs.length} listings, ${total} photo URLs total...`, 'info');
+      if (progText) progText.textContent = `0 of ${total} photos saved...`;
+
+      for (const job of jobs) {
+        const r = job.record;
+        const slug = photoSlug(r.name);
+        const localPaths = [];
+
+        for (let i = 0; i < job.urls.length; i++) {
+          const url = job.urls[i];
+          done++;
+
+          // Update the live progress bar/text and button label on every single
+          // photo — not just every N — so this is actually visible in real time.
+          if (progFill) progFill.style.width = Math.round((done / total) * 100) + '%';
+          if (progText) progText.textContent = `${done}/${total} photos processed (${okCount} saved, ${failCount} failed)...`;
+          if (btn) btn.textContent = `📸 ${done}/${total}...`;
+
+          try {
+            const resp = await fetch(url);
+            if (!resp.ok) {
+              failCount++;
+              if (resp.status === 403) forbiddenCount++;
+              let detail = '';
+              try {
+                const bodyText = await resp.text();
+                try { detail = JSON.parse(bodyText)?.error?.message || bodyText; }
+                catch (_) { detail = bodyText; }
+              } catch (_) { /* body already consumed or unreadable — status alone still logged */ }
+              log(`  ✕ HTTP ${resp.status} — ${r.name} photo ${i + 1}${detail ? ': ' + String(detail).slice(0, 300) : ''}`, 'warn');
+              continue;
+            }
+            const blob = await resp.blob();
+            if (!blob.type.startsWith('image/')) {
+              failCount++;
+              log(`  ✕ Response wasn't an image (got ${blob.type || 'unknown type'}) — ${r.name} photo ${i + 1}`, 'warn');
+              continue;
+            }
+            const filename = `${r.id}-${slug}-${i + 1}${extFromContentType(blob.type)}`;
+            const fileHandle = await imagesDirHandle.getFileHandle(filename, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+            localPaths.push(`images/${filename}`);
+            okCount++;
+            log(`  ✓ Saved ${filename}`, 'success');
+          } catch (err) {
+            failCount++;
+            corsCount++;
+            log(`  ✕ Browser blocked this request (likely CORS) — ${r.name} photo ${i + 1}: ${err.message}`, 'error');
+          }
+        }
+
+        // Only overwrite if we actually got at least one local file — otherwise
+        // leave the original URL in place so it can be retried later instead
+        // of being wiped out.
+        if (localPaths.length) {
+          r.image = localPaths[0];
+          r.images = localPaths;
+        }
+      }
+
+      if (progFill) progFill.style.width = '100%';
+      if (progText) progText.textContent = `Done: ${okCount}/${total} saved, ${failCount} failed.`;
+
+      if (okCount === 0 && forbiddenCount > 0) {
+        log(`Result: 0 of ${total} photos saved — ${forbiddenCount} came back HTTP 403 (Forbidden). Unlike a CORS block, this means the `
+          + `request reached Google and was explicitly denied — check the actual error message logged above for each photo. Most likely cause: `
+          + `Google's photo "name" tokens expire (Google's own docs: "the name can expire... make a request to Place Details/Nearby Search/Text `
+          + `Search (New) to obtain a new name") — if these listings were collected in an earlier session rather than moments ago, the tokens are `
+          + `probably dead. Fix: re-run the Google Places search now, then click Export Photos immediately after, in the same session. `
+          + `If the error text above instead mentions API/permission/referrer, check console.cloud.google.com → Credentials → your key instead.`, 'error');
+        alert(`${forbiddenCount} photo request(s) came back 403 Forbidden. If these listings weren't just collected in this session, Google's photo tokens have likely expired — re-run the Google Places search, then export photos right away. See the Activity Log for Google's exact wording per photo.`);
+        return;
+      }
+
+      if (okCount === 0 && corsCount > 0) {
+        log(`Result: 0 of ${total} photos saved, and ${corsCount} failed in a way that looks like a CORS block. `
+          + `This confirms the browser can't read these image bytes even though it can display them — this method `
+          + `won't work here. Use the Python script (rehost_facility_images.py) instead; it isn't subject to this restriction.`, 'error');
+        alert(`Every photo request was blocked (CORS or similar) — the browser can display these images but can't read their bytes to save them. Use the Python script instead.`);
+        return;
+      }
+
+      if (okCount === 0) {
+        log('No photos could be saved — see the lines above for the specific reason on each one.', 'error');
+        alert('No photos could be saved. Check the Activity Log tab for details on each failure.');
+        return;
+      }
+
+      log(`Done: ${okCount} photos saved directly into "${imagesDirHandle.name}" (${failCount} failed, ${corsCount} of those look like CORS `
+        + `blocks, ${forbiddenCount} were 403 Forbidden). Click "Export listings.json" to get a JSON that already points at these local paths.`, 'success');
+    } catch (err) {
+      // Catch-all: guarantees a hard crash anywhere above still surfaces here
+      // instead of failing invisibly with no log entry and no alert at all.
+      log(`Photo export crashed unexpectedly: ${err.message}`, 'error');
+      alert(`Photo export hit an unexpected error: ${err.message}\n\nCheck the Activity Log tab for details.`);
+    } finally {
+      photoExportRunning = false;
+      if (btn) { btn.disabled = false; btn.textContent = originalBtnText || '📸 Export Photos to Folder'; }
+      if (progWrap) progWrap.classList.remove('show');
+    }
+  }
+
+  function exportMergeInstructions() {
+    const msg = [
+      'HOW TO USE EXPORTED LISTINGS WITH FRONTPORCHDFW.COM',
+      '───────────────────────────────────────────────────',
+      '',
+      '1. Click "Export listings.json" — save the file',
+      '2. The exported file is in the EXACT format your site uses.',
+      '   You can replace your existing listings.json with it.',
+      '',
+      '3. Fields you need to fill in manually per listing:',
+      '   • priceRange — verified price if available; leave blank to use the built-in estimate',
+      '   • pricing — structured pricing with exact/range/estimated type and isEstimated flag',
+      '   • budgetTags — e.g. ["3k-5k", "5k-8k"]',
+      '     Options: "under3k", "3k-5k", "5k-8k", "8kplus"',
+      '   • email — facility contact email',
+      '   • image — URL to a facility photo',
+      '   • description — 2-3 sentences about the community',
+      '   • amenities — e.g. ["social", "dining", "outdoor", "medical"]',
+      '   • premium — set to true for paying facilities',
+      '',
+      '4. Fields auto-populated from scraping:',
+      '   • name, type, city, area, address, phone',
+      '   • rating, reviewCount (from Google)',
+      '   • lat, lng (from Google Places)',
+      '   • mapsUrl — direct link to the verified Google Maps listing',
+      '   • reviews — up to 2 real Google testimonials (author, rating, text, time)',
+      '     Only populated for listings sourced from Google Places.',
+      '',
+      '5. Extra reference fields (prefixed with _):',
+      '   • _website, _licenseNumber, _capacity, _licenseStatus, _source',
+      '   These are for YOUR reference and are ignored by the site.',
+      '   Remove them or keep them — either way works.',
+      '',
+      'TIP: Use VS Code or jsonlint.com to validate before deploying.',
+    ].join("\n");
+    alert(msg);
+  }
+
+  function copyClipboard(btn) {
+    if (!dataset.length) { alert('No data to copy.'); return; }
+    const headers = ['Name','Type','City','Address','Phone','Rating','Website','Source','License #','Capacity'];
+    const rows = dataset.map(r => [r.name,r.type,r.city,r.address,r.phone,r.rating,r.website,r.source,r.licenseNumber,r.capacity].join('\t'));
+    const text = [headers.join('\t'), ...rows].join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+      log(`Copied ${dataset.length} rows to clipboard (paste directly into Excel or Google Sheets)`, 'success');
+      if (btn) {
+        const original = btn.textContent;
+        btn.textContent = '✓ Copied!';
+        setTimeout(() => btn.textContent = original, 2000);
+      }
+    });
+  }
+
+  function download(filename, content, type) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([content], { type }));
+    a.download = filename;
+    a.click();
+  }
+
+  function dateStamp() {
+    return new Date().toISOString().slice(0,10).replace(/-/g,'');
+  }
+
+  loadLocal();
+  updateStats();
+  renderTable();
+</script>
+</body>
+</html>
